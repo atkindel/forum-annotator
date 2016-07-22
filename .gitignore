@@ -1,2 +1,4 @@
 data/
 old/
+*.pyc
+*.DS_Store
