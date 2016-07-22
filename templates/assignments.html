@@ -1,0 +1,19 @@
+{% extends "annotator.html" %}
+{% block title %}Assign{% endblock %}
+{% block body %}
+	<h2>Thread assigner</h2>
+	
+	<table class="users" border=1>
+		<tr>
+			<td><b>User</b></td>
+			{% for thread in threads %}
+			<td>{{ thread.}}</td>
+			{% endfor %}
+		</tr>
+		{% for user in users %}
+		<tr>
+			<td>{{user.first_name}} {{user.last_name}}</td>
+		</tr>
+		{% endfor %}
+	</table>
+{% endblock %}

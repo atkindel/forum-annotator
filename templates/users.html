@@ -1,0 +1,12 @@
+{% extends "annotator.html" %}
+{% block title %}Users{% endblock %}
+{% block body %}
+	<h2>Users</h2>
+	<ul class="users">
+		{% for user in users %}
+		<li>({{ user.id }}) <em>{{ user.username }}</em>: {{ user.first_name }} {{ user.last_name }} -- {{ user.superuser }}</li>
+		{% else %}
+		<em>No users added.</em>
+		{% endfor %}
+	</ul>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "annotator.html" %}
+{% block body %}
+	<em>Annotator.</em>
+	<br><br>
+	{% if g.user %}
+		<a href="{{ url_for('admin') }}">admin</a>
+	{% else %}
+		<a href="{{ url_for('login') }}">login</a>
+	{% endif %}
+{% endblock %}
