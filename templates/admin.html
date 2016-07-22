@@ -1,7 +1,16 @@
 {% extends "annotator.html" %}
 {% block title %}Admin{% endblock %}
 {% block body %}
-	<h2>User administration</h2>
+	<h2>Users</h2>
+	<ul class="users">
+		{% for user in users %}
+		<li>({{ user.id }}) <em>{{ user.username }}</em>: {{ user.first_name }} {{ user.last_name }}{% if user.superuser %} -- <em>admin</em>{% endif %}</li>
+		{% else %}
+		<em>No users added.</em>
+		{% endfor %}
+	</ul>
+	<br>
+	<h2>Add a user</h2>
 	<form action="{{ url_for('admin') }}" method="POST">
 		<table>
 			<tr>

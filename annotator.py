@@ -52,6 +52,7 @@ def close_db(error):
 
 @app.before_request
 def set_user():
+	'''Attach user information to HTTP requests.'''
 	g.user = None
 	if 'user_id' in session:
 		db = open_db()
@@ -59,6 +60,7 @@ def set_user():
 	
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+	'''Log in as user.'''
 	if g.user:
 		return redirect(url_for('index'))
 	if request.method == 'POST':
@@ -75,14 +77,9 @@ def login():
 
 @app.route('/logout')
 def logout():
+	'''Logout active user.'''
 	session.pop('user_id', None)
 	return redirect(url_for('index'))
-	
-@app.route('/users')
-def users():
-	db = open_db()
-	users = db.execute('select id, username, first_name, last_name, superuser from users').fetchall()
-	return render_template('users.html', users=users)
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
@@ -93,7 +90,9 @@ def admin():
 			  [request.form['username'], request.form['first_name'], request.form['last_name'], request.form['email'], generate_password_hash(request.form['password']), su])
 		db.commit()
 		return redirect(url_for('users'))
-	return render_template('admin.html')
+	db = open_db()
+	users = db.execute('select id, username, first_name, last_name, superuser from users').fetchall()
+	return render_template('admin.html', users=users)
 
 
 ## Annotator administration
