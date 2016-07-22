@@ -4,7 +4,7 @@
 	<h2>Users</h2>
 	<ul class="users">
 		{% for user in users %}
-		<li>({{ user.id }}) <em>{{ user.username }}</em>: {{ user.first_name }} {{ user.last_name }} -- {{ user.superuser }}</li>
+		<li>({{ user.id }}) <em>{{ user.username }}</em>: {{ user.first_name }} {{ user.last_name }}{% if user.superuser %} -- <em>admin</em>{% endif %}</li>
 		{% else %}
 		<em>No users added.</em>
 		{% endfor %}

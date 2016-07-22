@@ -3,11 +3,11 @@
 {% block body %}
 	<h2>Thread assigner</h2>
 	
-	<table class="users" border=1>
-		<tr>
+	<table class="users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
+		<tr class="threads">
 			<td><b>User</b></td>
 			{% for thread in threads %}
-			<td>{{ thread.}}</td>
+			<td></td>
 			{% endfor %}
 		</tr>
 		{% for user in users %}
