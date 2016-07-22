@@ -42,5 +42,5 @@ CREATE TABLE `users` (
 	last_name text not null,
 	email text not null,
 	pass_hash text not null,
-	superuser boolean
+	superuser boolean not null
 );
