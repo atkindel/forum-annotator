@@ -1,6 +1,5 @@
 DROP TABLE IF EXISTS `assignments`;
 CREATE TABLE `assignments` (
-	id integer primary key autoincrement,
 	user_id integer not null,
 	thread_id integer not null,
 	next_post integer default null,
