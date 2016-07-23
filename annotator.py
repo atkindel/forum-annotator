@@ -5,7 +5,7 @@
 # Date: 19 July 2016
 
 import os
-
+from functools import wraps
 from flask import Flask, g, render_template, request, url_for, redirect, session
 from werkzeug import generate_password_hash, check_password_hash
 import sqlite3
@@ -50,6 +50,26 @@ def close_db(error):
 
 ## User session management
 
+def login_required(f):
+	'''Require logged-in user to access.'''
+	@wraps(f)
+	def login_req_fn(*args, **kwargs):
+		if not g.user:
+			return redirect(url_for('login'))
+		return f(*args, **kwargs)
+	return login_req_fn
+	
+def superuser_required(f)
+	'''Required logged-in superuser to access.'''
+	@wraps(f)
+	def su_req_fn(*args, **kwargs):
+		if not g.user:
+			return redirect(url_for('login'))
+		if not g.user['superuser']:
+			return redirect(url_for('index'))
+		return f(*args, **kwargs)
+	return su_req_fn
+	
 @app.before_request
 def set_user():
 	'''Attach user information to HTTP requests.'''
@@ -89,7 +109,7 @@ def admin():
 		db.execute("insert into users(username, first_name, last_name, email, pass_hash, superuser) values (?,?,?,?,?,?)",
 			  [request.form['username'], request.form['first_name'], request.form['last_name'], request.form['email'], generate_password_hash(request.form['password']), su])
 		db.commit()
-		return redirect(url_for('users'))
+		return redirect(url_for('admin'))
 	db = open_db()
 	users = db.execute('select id, username, first_name, last_name, superuser from users').fetchall()
 	return render_template('admin.html', users=users)
@@ -97,6 +117,15 @@ def admin():
 
 ## Annotator administration
 
+@app.context_processor
+def assignment_processor():
+	'''Template utility function: is thread_id assigned to user_id?'''
+	def assigned(thread_id, user_id):
+		db = open_db()
+		assns = db.execute("SELECT * FROM assignments WHERE thread_id = ? AND user_id = ?", [thread_id, user_id]).fetchall()
+		return (assns not null)
+	return dict(assigned=assigned)
+		
 @app.route('/assign', methods=['GET', 'POST'])
 def assign():
 	if not g.user:
