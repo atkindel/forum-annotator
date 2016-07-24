@@ -3,17 +3,23 @@
 {% block body %}
 	<h2>Thread assigner</h2>
 	
-	<table class="users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
-		<tr class="threads">
-			<td><b>User</b></td>
+	<form action="{{ url_for('assign') }}" method="POST">
+		<table class="threads users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
+			<tr>
+				<td> </td>
+				{% for user in users %}
+					<td>{{user.first_name}} {{user.last_name}}</td>
+				{% endfor %}
+			</tr>
 			{% for thread in threads %}
-			<td></td>
+			<tr>
+				<td>{% ## THREAD NAME %}</td>
+				{% ## for user in users %}
+					<td><input type="checkbox" name="{{ (thread.mongoid, user.id) }}" value="{{ assigned(thread.mongoid, user.id) }}"></td>
+				{% endfor %}
+			</tr>
 			{% endfor %}
-		</tr>
-		{% for user in users %}
-		<tr>
-			<td>{{user.first_name}} {{user.last_name}}</td>
-		</tr>
-		{% endfor %}
-	</table>
+		</table>
+		<input type="submit" value="Update assignments">
+	</form>
 {% endblock %}

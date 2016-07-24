@@ -59,7 +59,7 @@ def login_required(f):
 		return f(*args, **kwargs)
 	return login_req_fn
 	
-def superuser_required(f)
+def superuser_required(f):
 	'''Required logged-in superuser to access.'''
 	@wraps(f)
 	def su_req_fn(*args, **kwargs):
@@ -102,7 +102,9 @@ def logout():
 	return redirect(url_for('index'))
 
 @app.route('/admin', methods=['GET', 'POST'])
+@superuser_required
 def admin():
+	'''Logic for user admin page'''
 	if request.method == 'POST':
 		db = open_db()
 		su = (request.form.get('superuser') == 'on')
@@ -123,15 +125,13 @@ def assignment_processor():
 	def assigned(thread_id, user_id):
 		db = open_db()
 		assns = db.execute("SELECT * FROM assignments WHERE thread_id = ? AND user_id = ?", [thread_id, user_id]).fetchall()
-		return (assns not null)
+		return "on" if assns else "off"
 	return dict(assigned=assigned)
 		
 @app.route('/assign', methods=['GET', 'POST'])
+@superuser_required
 def assign():
-	if not g.user:
-		return redirect(url_for('login'))
-	if not g.user['superuser']:
-		return redirect(url_for('users'))
+	'''Logic for thread assigner'''
 	db = open_db()
 	if request.method == 'POST':
 		pass  # TODO: Assign threads to users by checking boxes in a table
