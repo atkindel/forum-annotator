@@ -1,8 +1,9 @@
 DROP TABLE IF EXISTS `assignments`;
 CREATE TABLE `assignments` (
 	user_id integer not null,
-	thread_id integer not null,
+	thread_id string not null,
 	next_post integer default null,
+	done integer default 0,
 	finished boolean not null
 );
 
@@ -23,7 +24,7 @@ CREATE TABLE `threads` (
 	anonymous boolean,
 	parent_ids text,
 	comment_thread_id integer not null,
-	mongoid integer not null,
+	mongoid string not null,
 	level integer not null,
 	finished boolean not null
 );
