@@ -6,20 +6,25 @@
 	<form action="{{ url_for('assign') }}" method="POST">
 		<table class="threads users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
 			<tr>
-				<td> </td>
+				<td><center><b>Thread</b></center></td>
 				{% for user in users %}
-					<td>{{user.first_name}} {{user.last_name}}</td>
+					<td><em>{{user.first_name}} {{user.last_name}}</em></td>
 				{% endfor %}
 			</tr>
 			{% for thread in threads %}
 			<tr>
-				<td>{% ## THREAD NAME %}</td>
-				{% ## for user in users %}
-					<td><input type="checkbox" name="{{ (thread.mongoid, user.id) }}" value="{{ assigned(thread.mongoid, user.id) }}"></td>
+				<td>{{ thread.title }}</td>
+				{% for user in users %}
+					{% if not assigned(thread.mongoid, user.id) %}
+					<td><center><input type="checkbox" name="{{ {'thread':thread.mongoid, 'user':user.id} }}"></center></td>
+					{% else %}
+					<td><center>{{ done(thread.mongoid, user.id) }}</center></td>
+					{% endif %}
 				{% endfor %}
 			</tr>
 			{% endfor %}
 		</table>
+		<br>
 		<input type="submit" value="Update assignments">
 	</form>
 {% endblock %}
