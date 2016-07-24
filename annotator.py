@@ -125,7 +125,6 @@ def logout():
 	return redirect(url_for('index'))
 
 @app.route('/admin', methods=['GET', 'POST'])
-@superuser_required
 def admin():
 	'''Logic for user admin page'''
 	if request.method == 'POST':
@@ -165,7 +164,6 @@ def done_processor():
 	return dict(done=done)
 
 @app.route('/assign', methods=['GET', 'POST'])
-@superuser_required
 def assign():
 	'''Logic for thread assigner'''
 	db = open_db()
