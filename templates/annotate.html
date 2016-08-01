@@ -1,0 +1,14 @@
+{% extends "annotator.html" %}
+{% block title %}Annotate{% endblock %}
+{% block body %}
+    <h2>Annotate threads</h2>
+    <form action="{{ url_for('annotate') }}" method="POST">
+        <select class="assigned" name="thread">
+        {% for assn in assigned %}
+            <option value="{{assn.thread_id}}">{{assn.title}}</option>
+        {% endfor %}
+        </select>
+        <input type="submit" value="Select thread">
+    </form>
+    {% block posts %}{% endblock %}
+{% endblock %}

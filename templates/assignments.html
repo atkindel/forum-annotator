@@ -1,30 +1,29 @@
 {% extends "annotator.html" %}
 {% block title %}Assign{% endblock %}
 {% block body %}
-	<h2>Thread assigner</h2>
-	
-	<form action="{{ url_for('assign') }}" method="POST">
-		<table class="threads users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
-			<tr>
-				<td><center><b>Thread</b></center></td>
-				{% for user in users %}
-					<td><em>{{user.first_name}} {{user.last_name}}</em></td>
-				{% endfor %}
-			</tr>
-			{% for thread in threads %}
-			<tr>
-				<td>{{ thread.title }}</td>
-				{% for user in users %}
-					{% if not assigned(thread.mongoid, user.id) %}
-					<td><center><input type="checkbox" name="{{ {'thread':thread.mongoid, 'user':user.id} }}"></center></td>
-					{% else %}
-					<td><center>{{ done(thread.mongoid, user.id) }}</center></td>
-					{% endif %}
-				{% endfor %}
-			</tr>
-			{% endfor %}
-		</table>
-		<br>
-		<input type="submit" value="Update assignments">
-	</form>
+    <h2>Assign threads</h2>
+    <form action="{{ url_for('assign') }}" method="POST">
+        <table class="threads users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
+            <tr>
+                <td><center><b>Thread</b></center></td>
+                {% for user in users %}
+                    <td><em>{{user.first_name}} {{user.last_name}}</em></td>
+                {% endfor %}
+            </tr>
+            {% for thread in threads %}
+            <tr>
+                <td>{{ thread.title }}</td>
+                {% for user in users %}
+                    {% if not assigned(thread.mongoid, user.id) %}
+                    <td><center><input type="checkbox" name="{{ {'thread':thread.mongoid, 'user':user.id} }}"></center></td>
+                    {% else %}
+                    <td><center>{{ done(thread.mongoid, user.id) }}</center></td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+        <br>
+        <input type="submit" value="Update assignments">
+    </form>
 {% endblock %}

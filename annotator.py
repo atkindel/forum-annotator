@@ -8,7 +8,7 @@ from csv import DictReader
 from functools import wraps
 import time
 
-from flask import Flask, g, render_template, request, url_for, redirect, session
+from flask import Flask, g, render_template, request, url_for, redirect, session, flash
 from werkzeug import generate_password_hash, check_password_hash
 import sqlite3
 
@@ -23,11 +23,23 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 
 
-# Helper methods
+# Static helper methods
 
 def to_epoch(timestamp):
+    '''Convert post timestamp string to epoch time.'''
     return str(int(time.mktime(time.strptime(timestamp, '%Y-%m-%d %H:%M:%S'))))
 
+
+# Database procedures
+
+def total_posts(thread_id):
+    db = open_db()
+    return db.execute("SELECT count(*) FROM threads WHERE comment_thread_id = '%s'" % thread_id).fetchone()[0] + 1
+
+def set_finished(user_id, thread_id):
+    db = open_db()
+    db.execute("UPDATE assignments SET finished = 1 WHERE thread_id = '%s' and user_id = %d" % (thread_id, user_id))
+    db.commit()
 
 # Database management
 
@@ -100,6 +112,7 @@ def set_user():
     if 'user_id' in session:
         db = open_db()
         g.user = db.execute("SELECT * FROM users WHERE id = ?", [session['user_id']]).fetchone()
+        # TODO: Restrict above select to used data
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -109,6 +122,7 @@ def login():
     if request.method == 'POST':
         db = open_db()
         user = db.execute("SELECT * FROM users WHERE username = ?", [request.form['username']]).fetchone()
+        # TODO: Restrict above select to used data
         if not user:
             print "Invalid username."
         elif not check_password_hash(user['pass_hash'], request.form['password']):
@@ -145,6 +159,7 @@ def admin():
 def assigned(thread_id, user_id):
     db = open_db()
     assns = db.execute("SELECT * FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id))).fetchall()
+    # TODO: Restrict above select to used data
     return bool(assns)
 
 @app.context_processor
@@ -156,11 +171,11 @@ def assignment_processor():
 
 @app.context_processor
 def done_processor():
-    ''' Template utility function: how many posts in thread X has user Y coded?'''
+    '''Template utility function: how many posts in thread X has user Y coded?'''
     def done(thread_id, user_id):
         db = open_db()
         ct = db.execute("SELECT done FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id))).fetchone()[0]
-        total = db.execute("SELECT count(*) FROM threads WHERE comment_thread_id = '%s'" % thread_id).fetchone()[0]
+        total = total_posts(thread_id)
         return "%d/%d" % (ct, total)
     return dict(done=done)
 
@@ -171,6 +186,7 @@ def assign():
     db = open_db()
     threads = db.execute("SELECT mongoid, title FROM threads WHERE level = 1").fetchall()
     users = db.execute("SELECT * FROM users ORDER BY id").fetchall()
+    # TODO: Restrict above select to used data
     if request.method == 'POST':
         for key in request.form.keys():
             ids = eval(key)
@@ -181,6 +197,67 @@ def assign():
                 db.execute("INSERT INTO assignments(thread_id, user_id, next_post, finished) VALUES (?,?,?,?)", [thread, user, thread, 0])
                 db.commit()
     return render_template('assignments.html', users=users, threads=threads)
+
+# Annotator user views
+
+@app.route('/annotate', methods=['GET', 'POST'])
+@login_required
+def annotate():
+    '''Logic for user annotation of forum posts.'''
+    db = open_db()
+    userid = g.user['id']
+    assigned = db.execute("SELECT a.thread_id, t.title, a.next_post FROM assignments a JOIN threads t ON thread_id = mongoid WHERE user_id = %d" % userid).fetchall()
+    if request.method == 'POST':
+        threadid = request.form['thread']
+        return redirect(url_for('annotate_thread', threadid=threadid))
+    return render_template('annotate.html', assigned=assigned)
+
+def get_thread(threadid):
+    '''Given a top-level post mongoid, return the corresponding thread.'''
+    db = open_db()
+    return db.execute("SELECT * FROM threads WHERE mongoid = '%s' UNION ALL SELECT * FROM threads WHERE comment_thread_id = '%s'" % (threadid, threadid)).fetchall()
+
+def fetch_posts(threadid, next_post_id):
+    '''Fetch all posts completed up to mongoid of next post.'''
+    thread = get_thread(threadid)
+    history = []
+    for post in thread:
+        history.append(post)
+        if post['mongoid'] == next_post_id:
+            return history[:-1], history[-1]
+
+def goto_post(userid, threadid, rel_idx):
+    '''Given a relative index, move persistent pointer to post on deck accordingly.'''
+    db = open_db()
+    post_idx = db.execute("SELECT done FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (threadid, userid)).fetchone()[0] + rel_idx
+    if post_idx < 0:
+        return "Earliest post."
+    elif post_idx >= total_posts(threadid):
+        set_finished(userid, threadid)
+        return "Last post. This thread is finished!"
+    thread = get_thread(threadid)
+    post_id = thread[post_idx]['mongoid']
+    db.execute("UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d" % (rel_idx, post_id, threadid, userid))
+    db.commit()
+    return None
+
+@app.route('/annotate/<threadid>', methods=['GET', 'POST'])
+@login_required
+def annotate_thread(threadid):
+    db = open_db()
+    userid = g.user['id']
+    if request.method == 'POST':
+        if 'next' in request.form.keys():
+            msg = goto_post(userid, threadid, 1)
+            if msg:
+                flash(msg)
+        elif 'prev' in request.form.keys():
+            msg = goto_post(userid, threadid, -1)
+            if msg:
+                flash(msg)
+    next_post_id = db.execute("SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).fetchone()[0]
+    posts, next_post = fetch_posts(threadid, next_post_id)
+    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post)
 
 
 # Main page

@@ -1,14 +1,23 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<title>Annotator | {% block title %}{% endblock %}</title>
-		<link rel="stylesheet" href="static/annotator.css">
-	</head>
-	<body>
-		<div>
-			<h1>Annotator</h1>
-			{% block body %}{% endblock %}
-		</div>
-	</body>
+    <head>
+        <meta charset="utf-8">
+        <title>Annotator | {% block title %}{% endblock %}</title>
+        <link rel="stylesheet" href="static/annotator.css">
+    </head>
+    <body>
+        <div>
+            <h1>Annotator</h1>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                        <li>{{message}}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            {% endwith %}
+            {% block body %}{% endblock %}
+        </div>
+    </body>
 </html>
