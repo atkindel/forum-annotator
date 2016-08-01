@@ -51,7 +51,7 @@ def set_finished(user_id, thread_id):
 def open_db():
     if not hasattr(g, 'sqlite_db'):
         g.sqlite_db = sqlite3.connect(app.config['DATABASE'])
-        g.sqlite_db.row_factory = sqlite3.Row  # treat db rows as dicts
+        g.sqlite_db.row_factory = sqlite3.Row
     return g.sqlite_db
 
 @app.cli.command('build')
@@ -116,8 +116,7 @@ def set_user():
     g.user = None
     if 'user_id' in session:
         db = open_db()
-        g.user = db.execute("SELECT * FROM users WHERE id = ?", [session['user_id']]).fetchone()
-        # TODO: Restrict above select to used data
+        g.user = db.execute("SELECT id, username, first_name, last_name, superuser FROM users WHERE id = ?", [session['user_id']]).fetchone()
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -127,12 +126,11 @@ def login():
         return redirect(url_for('index'))
     if request.method == 'POST':
         db = open_db()
-        user = db.execute("SELECT * FROM users WHERE username = ?", [request.form['username']]).fetchone()
-        # TODO: Restrict above select to used data
+        user = db.execute("SELECT id, pass_hash FROM users WHERE username = ?", [request.form['username']]).fetchone()
         if not user:
-            print "Invalid username."
+            flash("Invalid username.")
         elif not check_password_hash(user['pass_hash'], request.form['password']):
-            print "Invalid password."
+            flash("Invalid password.")
         else:
             session['user_id'] = user['id']
             return redirect(url_for('index'))
@@ -173,8 +171,7 @@ def admin():
 
 def assigned(thread_id, user_id):
     db = open_db()
-    assns = db.execute("SELECT * FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id))).fetchall()
-    # TODO: Restrict above select to used data
+    assns = db.execute("SELECT 1 FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id))).fetchall()
     return bool(assns)
 
 @app.context_processor
@@ -201,8 +198,7 @@ def assign():
     '''Logic for thread assigner'''
     db = open_db()
     threads = db.execute("SELECT mongoid, title FROM threads WHERE level = 1").fetchall()
-    users = db.execute("SELECT * FROM users ORDER BY id").fetchall()
-    # TODO: Restrict above select to used data
+    users = db.execute("SELECT id, first_name, last_name FROM users ORDER BY id").fetchall()
     if request.method == 'POST':
         for key in request.form.keys():
             ids = eval(key)
@@ -266,13 +262,12 @@ def annotate_thread(threadid):
     userid = g.user['id']
     if request.method == 'POST':
         if 'next' in request.form.keys():
-            msg = goto_post(userid, threadid, 1)
-            if msg:
-                flash(msg)
+            incr = 1
         elif 'prev' in request.form.keys():
-            msg = goto_post(userid, threadid, -1)
-            if msg:
-                flash(msg)
+            incr = -1
+        msg = goto_post(userid, threadid, incr)
+        if msg:
+            flash(msg)
     next_post_id = db.execute("SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).fetchone()[0]
     posts, next_post = fetch_posts(threadid, next_post_id)
     return render_template('posts.html', threadid=threadid, posts=posts, next=next_post)
