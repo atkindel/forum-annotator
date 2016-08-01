@@ -36,10 +36,15 @@ def total_posts(thread_id):
     db = open_db()
     return db.execute("SELECT count(*) FROM threads WHERE comment_thread_id = '%s'" % thread_id).fetchone()[0] + 1
 
+def done_posts(user_id, thread_id):
+    db = open_db()
+    return db.execute("SELECT done FROM assignments WHERE user_id = %d AND thread_id = '%s'" % (user_id, thread_id)).fetchone()[0]
+
 def set_finished(user_id, thread_id):
     db = open_db()
     db.execute("UPDATE assignments SET finished = 1 WHERE thread_id = '%s' and user_id = %d" % (thread_id, user_id))
     db.commit()
+
 
 # Database management
 
@@ -114,6 +119,7 @@ def set_user():
         g.user = db.execute("SELECT * FROM users WHERE id = ?", [session['user_id']]).fetchone()
         # TODO: Restrict above select to used data
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     '''Log in as user.'''
@@ -137,6 +143,15 @@ def logout():
     '''Logout active user.'''
     session.pop('user_id', None)
     return redirect(url_for('index'))
+
+@app.route('/<username>')
+@login_required
+def userpage(username):
+    '''Show assignment information for this user.'''
+    db = open_db()
+    user_id = g.user['id']
+    assignments = db.execute("SELECT * FROM assignments WHERE user_id = %d" % user_id).fetchall()
+    return render_template('user.html', username=username, assignments=assignments)
 
 @app.route('/admin', methods=['GET', 'POST'])
 # @superuser_required
@@ -174,10 +189,11 @@ def done_processor():
     '''Template utility function: how many posts in thread X has user Y coded?'''
     def done(thread_id, user_id):
         db = open_db()
-        ct = db.execute("SELECT done FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id))).fetchone()[0]
+        ct = done_posts(user_id, thread_id)
         total = total_posts(thread_id)
         return "%d/%d" % (ct, total)
     return dict(done=done)
+
 
 @app.route('/assign', methods=['GET', 'POST'])
 # @superuser_required
@@ -198,19 +214,8 @@ def assign():
                 db.commit()
     return render_template('assignments.html', users=users, threads=threads)
 
-# Annotator user views
 
-@app.route('/annotate', methods=['GET', 'POST'])
-@login_required
-def annotate():
-    '''Logic for user annotation of forum posts.'''
-    db = open_db()
-    userid = g.user['id']
-    assigned = db.execute("SELECT a.thread_id, t.title, a.next_post FROM assignments a JOIN threads t ON thread_id = mongoid WHERE user_id = %d" % userid).fetchall()
-    if request.method == 'POST':
-        threadid = request.form['thread']
-        return redirect(url_for('annotate_thread', threadid=threadid))
-    return render_template('annotate.html', assigned=assigned)
+# Annotator user views
 
 def get_thread(threadid):
     '''Given a top-level post mongoid, return the corresponding thread.'''
@@ -229,7 +234,7 @@ def fetch_posts(threadid, next_post_id):
 def goto_post(userid, threadid, rel_idx):
     '''Given a relative index, move persistent pointer to post on deck accordingly.'''
     db = open_db()
-    post_idx = db.execute("SELECT done FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (threadid, userid)).fetchone()[0] + rel_idx
+    post_idx = done_posts(userid, threadid) + rel_idx
     if post_idx < 0:
         return "Earliest post."
     elif post_idx >= total_posts(threadid):
@@ -240,6 +245,19 @@ def goto_post(userid, threadid, rel_idx):
     db.execute("UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d" % (rel_idx, post_id, threadid, userid))
     db.commit()
     return None
+
+
+@app.route('/annotate', methods=['GET', 'POST'])
+@login_required
+def annotate():
+    '''Logic for user annotation of forum posts.'''
+    db = open_db()
+    userid = g.user['id']
+    assigned = db.execute("SELECT a.thread_id, t.title, a.next_post FROM assignments a JOIN threads t ON thread_id = mongoid WHERE user_id = %d" % userid).fetchall()
+    if request.method == 'POST':
+        threadid = request.form['thread']
+        return redirect(url_for('annotate_thread', threadid=threadid))
+    return render_template('annotate.html', assigned=assigned)
 
 @app.route('/annotate/<threadid>', methods=['GET', 'POST'])
 @login_required

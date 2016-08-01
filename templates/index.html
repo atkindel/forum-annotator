@@ -1,14 +1,17 @@
 {% extends "annotator.html" %}
 {% block title %}Home{% endblock %}
 {% block body %}
-    <em>Menu</em>
+    <h2>Menu</h2>
     <ul>
     {% if g.user %}
         {% if g.user['superuser'] %}
-            <li><a href="{{ url_for('admin') }}">Administer users</a></li>
+        <li><em>Administration</em></li>
+        <ul>
+            <li><a href="{{ url_for('admin') }}">Register users</a></li>
             <li><a href="{{ url_for('assign') }}">Assign users to threads</a></li>
-            <br>
+        </ul>
         {% endif %}
+        <li><a href="{{ url_for('userpage', username=g.user['username']) }}">View assigned threads</a></li>
         <li><a href="{{ url_for('annotate') }}">Annotate forum posts</a></li>
         <li><a href="{{ url_for('logout') }}">Log out</a></li>
     {% else %}

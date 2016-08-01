@@ -1,0 +1,10 @@
+{% extends "annotator.html" %}
+{% block title %}{{username}}{% endblock %}
+{% block body %}
+    <h2>{{username}}</h2>
+    <ul class="assignments">
+    {% for assn in assignments %}
+        <li>[{{loop.index}}] <a href="{{ url_for('annotate_thread', threadid=assn.thread_id) }}">{{ assn.thread_id }} ({{ done(assn.thread_id, assn.user_id)}})</a></li>
+    {% endfor %}
+    </ul>
+{% endblock %}
