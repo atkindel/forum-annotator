@@ -3,11 +3,11 @@
     <head>
         <meta charset="utf-8">
         <title>Annotator | {% block title %}{% endblock %}</title>
-        <link rel="stylesheet" href="static/annotator.css">
+        <link rel="stylesheet" href="{{ url_for('static', filename='annotator.css') }}">
     </head>
     <body>
         <div>
-            <h1>Annotator</h1>
+            <h1><a href="{{ url_for('index') }}">annotator</a></h1>
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
                 <ul class="messages">
@@ -18,8 +18,6 @@
                 {% endif %}
             {% endwith %}
             {% block body %}{% endblock %}
-            <br><br>
-            <li><a href="{{ url_for('index') }}">Home</a></li>
         </div>
     </body>
 </html>
