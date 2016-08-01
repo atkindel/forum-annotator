@@ -31,10 +31,12 @@ CREATE TABLE `threads` (
     finished boolean not null
 );
 
--- DROP TABLE IF EXISTS `codes`;
--- CREATE TABLE `codes` (
--- 	# TODO
--- );
+DROP TABLE IF EXISTS `codes`;
+CREATE TABLE `codes` (
+    user_id integer not null,
+    post_id string not null,
+    comment longtext
+);
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (

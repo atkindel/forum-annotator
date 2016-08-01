@@ -262,15 +262,21 @@ def annotate_thread(threadid):
     userid = g.user['id']
     if request.method == 'POST':
         if 'next' in request.form.keys():
-            incr = 1
+            msg = goto_post(userid, threadid, 1)
         elif 'prev' in request.form.keys():
-            incr = -1
-        msg = goto_post(userid, threadid, incr)
+            msg = goto_post(userid, threadid, -1)
+        elif 'code' in request.form.keys():
+            comment = request.form['comment']
+            postid = request.form['postid']
+            db.execute("INSERT INTO codes(user_id, post_id, comment) VALUES (?,?,?)", [userid, postid, comment])
+            db.commit()
+            msg = "Added comment for post %s." % postid
         if msg:
             flash(msg)
     next_post_id = db.execute("SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).fetchone()[0]
+    comments = db.execute("SELECT comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid)).fetchall()
     posts, next_post = fetch_posts(threadid, next_post_id)
-    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post)
+    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
 
 
 # Main page

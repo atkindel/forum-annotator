@@ -2,15 +2,42 @@
 {% block title %}{{threadid}}{% endblock %}
 {% block body %}
     <h2>{{threadid}}</h2>
-    <ul class="posts">
+
+    <ol>
     {% for post in posts %}
-        <li>[{{loop.index}}] {{post.mongoid}} by {{post.author_username}}</li>
+        <li class="post">
+            <em>{{post.mongoid}} by {{post.author_username}}</em>
+            <br>
+            {{post.body}}
+        </li>
     {% endfor %}
-    </ul>
-    <p class="next">
-        Now coding: {{next.mongoid}} by {{next.author_username}}
-    </p>
+    </ol>
+
+    <div id="annotatethread">
+        <div class="post">
+            <b>Now coding:</b> <em>{{next.mongoid}} by {{next.author_username}}</em>
+            <br><br>
+            {{next.body}}
+        </div>
+
+        {% if comments %}
+        <div class="commentbox">
+            <h3>Your comments on this post:</h3>
+            <ol>
+                {% for comment in comments %}
+                    <li>{{comment.comment}}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+    </div>
+
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
+        <input type="text" name="comment">
+        <input type="hidden" value="{{next.mongoid}}" name="postid">
+        <br>
+        <input type="submit" value="Add comment" name="code">
+        <br><br>
         <input type="submit" value="Next post" name="next">
         <input type="submit" value="Previous post" name="prev">
     </form>
