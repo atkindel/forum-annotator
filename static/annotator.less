@@ -1,0 +1,94 @@
+body {
+    font-family: 'Helvetica Neue';
+    font-size: 10pt;
+}
+
+
+// Mixins
+
+.border {
+    border-style: dashed;
+    border-width: thin;
+    border-color: lightgray;
+    border-radius: 4px;
+}
+
+
+// App content
+
+.post {
+    width: 500px;
+    margin: 5px;
+    padding: 5px;
+    height: auto;
+
+    .border;
+
+    background-color: ghostwhite;
+}
+
+.commentbox {
+    width: 500px;
+    margin: 5px;
+    padding: 5px;
+    height: auto;
+
+    .border;
+
+    background-color: ghostwhite;
+}
+
+h2, h3, h4, h5, h6 .commentbox {
+    text-align: center;
+    font-style: italic;
+    font-weight: normal;
+}
+
+
+// Forms
+
+input[type=submit] {
+    font-family: 'Helvetica Neue';
+    font-size: 11pt;
+}
+
+// App header
+
+h1 {
+    text-align: center;
+
+    font-family: cursive;
+    font-size: 18pt;
+    font-style: oblique;
+    font-weight: normal;
+
+    .border;
+
+    margin: -0.5em -2em 0.67em -2em;
+
+    background-color: ghostwhite;
+    opacity: 1.0;
+
+    z-index: 10;
+
+    a {
+        text-decoration: none;
+        color: black;
+    }
+}
+
+
+// Flashed messages
+
+.messages {
+    .border;
+
+    margin-top: -1.5em;
+    padding-top: 0.5em;
+
+    z-index: 5;
+}
+
+.messages li {
+    font-size: 8pt;
+}
