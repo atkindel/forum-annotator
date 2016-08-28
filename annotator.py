@@ -46,6 +46,15 @@ def set_finished(user_id, thread_id):
     db.commit()
 
 
+# Clickstream logging
+
+@app.before_request
+def log():
+    # TODO: Implement user interaction logging
+    # The server might want to tarball these logfiles periodically
+    pass
+
+
 # Database management
 
 def open_db():
