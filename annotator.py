@@ -271,6 +271,7 @@ def annotate_thread(db, threadid):
             msg = goto_post(userid, threadid, 1)
         elif 'prev' in request.form.keys():
             msg = goto_post(userid, threadid, -1)
+            comments = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True)
         elif 'code' in request.form.keys():
             code_value = request.form['codevalue']
             comment = request.form['comment']
@@ -281,9 +282,8 @@ def annotate_thread(db, threadid):
         if msg:
             flash(msg)
     next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).next().values()[0]
-    #comments = query(db, "SELECT comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True)
     posts, next_post = fetch_posts(threadid, next_post_id)
-    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post)
+    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
 
 
 # Main page
