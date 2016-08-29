@@ -173,9 +173,6 @@ def admin(db):
                   (request.form['username'], request.form['first_name'], request.form['last_name'], request.form['email'], generate_password_hash(request.form['password']), su))
         return redirect(url_for('admin'))
     users = query(db, 'select id, username, first_name, last_name, superuser from users', fetchall=True)
-    print users
-    for user in users:
-        print user['id']
     return render_template('admin.html', users=users)
 
 
