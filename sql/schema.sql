@@ -10,10 +10,10 @@ CREATE TABLE `assignments` (
     assn_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     user_id INTEGER NOT NULL,
     thread_id TEXT NOT NULL,
-    next_post INTEGER DEFAULT NULL,
+    next_post TEXT DEFAULT NULL,
     done INTEGER DEFAULT 0,
     finished BOOLEAN NOT NULL
-);
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `threads`;
 CREATE TABLE `threads` (
@@ -31,18 +31,18 @@ CREATE TABLE `threads` (
     updated_at INTEGER NOT NULL,
     anonymous BOOLEAN,
     parent_ids TEXT,
-    comment_thread_id INTEGER NOT NULL,
+    comment_thread_id TEXT,
     mongoid TEXT NOT NULL,
     level INTEGER NOT NULL,
     finished BOOLEAN NOT NULL
-);
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `codes`;
 CREATE TABLE `codes` (
     user_id INTEGER NOT NULL,
     post_id TEXT NOT NULL,
     comment TEXT
-);
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
@@ -53,18 +53,4 @@ CREATE TABLE `users` (
     email TEXT NOT NULL,
     pass_hash TEXT NOT NULL,
     superuser BOOLEAN NOT NULL
-);
-
--- Triggers --
-
-DROP TRIGGER IF EXISTS `assignments_default_first_post`;
-DELIMITER //
-CREATE TRIGGER `assignments_default_first_post`
-AFTER INSERT ON assignments
-FOR EACH ROW #WHEN NEW.next_post IS NULL
-BEGIN
-    UPDATE assignments
-    SET next_post = NEW.thread_id
-    WHERE assn_id = NEW.assn_id;
-END//
-DELIMITER ;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
