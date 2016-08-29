@@ -272,16 +272,18 @@ def annotate_thread(db, threadid):
         elif 'prev' in request.form.keys():
             msg = goto_post(userid, threadid, -1)
         elif 'code' in request.form.keys():
+            code_value = request.form['codevalue']
             comment = request.form['comment']
             postid = request.form['postid']
-            query(db, "INSERT INTO codes(user_id, post_id, comment) VALUES ('%s', '%s', '%s')" % (userid, postid, comment))
-            msg = "Added comment for post %s." % postid
+            code_type = "replymap"          # Hard-coded, but should be generalized for other coder tasks
+            query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
+            msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
     next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).next().values()[0]
-    comments = query(db, "SELECT comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True)
+    #comments = query(db, "SELECT comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True)
     posts, next_post = fetch_posts(threadid, next_post_id)
-    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
+    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post)
 
 
 # Main page
