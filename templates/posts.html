@@ -33,12 +33,15 @@
     </div>
 
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
+        <h3>Code for Post:</h3>
+        <input type="text" name="code_value"><br>
+        <h3>Additional Comments:</h3>
         <input type="text" name="comment">
         <input type="hidden" value="{{next.mongoid}}" name="postid">
         <br>
         <input type="submit" value="Add comment" name="code">
         <br><br>
-        <input type="submit" value="Next post" name="next">
+        <!--<input type="submit" value="Next post" name="next">-->
         <input type="submit" value="Previous post" name="prev">
     </form>
     <br>
