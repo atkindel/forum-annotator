@@ -19,7 +19,7 @@
             <br><br>
             {{next.body}}
         </div>
-
+        <!--
         {% if comments %}
         <div class="commentbox">
             <h3>Your comments on this post:</h3>
@@ -30,6 +30,7 @@
             </ol>
         </div>
         {% endif %}
+        -->
     </div>
 
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
