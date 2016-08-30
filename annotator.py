@@ -8,24 +8,26 @@ from csv import DictReader
 from functools import wraps
 import subprocess
 import time
+import os
 
 from flask import Flask, g, render_template, request, url_for, redirect, session, flash
 from werkzeug import generate_password_hash, check_password_hash
-from dbutils.dbutils import with_db, query
+from dbutils import with_db, query
 
 
 # Configuration
 DEV_INSTANCE = True
-SECRET_KEY = "DEBUG"
-THREADS = "data/threads.csv"
-DB_NAME = 'ForumAnnotator'
-DB_USER = 'fa_debug'
-DB_PASS = 'fa_debug'
+THREADS = 'data/threads.csv'
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # Create application container
-app = Flask(__name__)
-app.config.from_object(__name__)
-dbms = {'username': DB_USER, 'password': DB_PASS, 'db': DB_NAME}
+application = Flask(__name__)
+application.config.from_object(__name__)
+dbms = {'username': os.environ['DB_USER'],
+        'password': os.environ['DB_PASS'],
+        'db': os.environ['DB_NAME'],
+        'host': os.environ['DB_HOST'],
+        'port': int(os.environ['DB_PORT'])}
 
 
 # Static helper methods
@@ -52,7 +54,7 @@ def set_finished(db, user_id, thread_id):
 
 # Clickstream logging
 
-@app.before_request
+@application.before_request
 def log():
     # TODO: Implement user interaction logging
     # The server might want to tarball these logfiles periodically
@@ -61,7 +63,7 @@ def log():
 
 # Database management
 
-@app.cli.command('build')
+@application.cli.command('build')
 def build_db():
     '''Build MySQL tables for development.'''
     # XXX: Don't use this in production
@@ -69,10 +71,10 @@ def build_db():
         subprocess.call("mysql -u %s -p%s < ./sql/schema.sql" % (DB_USER, DB_PASS), shell=True)
 
 
-@app.cli.command('load')
+@application.cli.command('load')
 @with_db(dbms)
 def load_db(db):
-    with open(app.config['THREADS']) as t:
+    with open(application.config['THREADS']) as t:
         rows = DictReader(t)
         rowct = 0
         for row in rows:
@@ -113,7 +115,7 @@ def superuser_required(f):
         return f(*args, **kwargs)
     return su_req_fn
 
-@app.before_request
+@application.before_request
 @with_db(dbms)
 def set_user(db):
     '''Attach user information to HTTP requests.'''
@@ -127,7 +129,7 @@ def set_user(db):
 
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@application.route('/login', methods=['GET', 'POST'])
 @with_db(dbms)
 def login(db):
     '''Log in as user.'''
@@ -148,13 +150,13 @@ def login(db):
             return redirect(url_for('index'))
     return render_template('login.html')
 
-@app.route('/logout')
+@application.route('/logout')
 def logout():
     '''Logout active user.'''
     session.pop('user_id', None)
     return redirect(url_for('index'))
 
-@app.route('/<username>')
+@application.route('/<username>')
 @login_required
 @with_db(dbms)
 def userpage(db, username):
@@ -163,7 +165,7 @@ def userpage(db, username):
     assignments = query(db, "SELECT * FROM assignments WHERE user_id = %d" % user_id, fetchall=True)
     return render_template('user.html', username=username, assignments=assignments)
 
-@app.route('/admin', methods=['GET', 'POST'])
+@application.route('/admin', methods=['GET', 'POST'])
 @with_db(dbms)
 def admin(db):
     '''Logic for user admin page'''
@@ -183,14 +185,14 @@ def assigned(db, thread_id, user_id):
     assns = query(db, "SELECT 1 FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id)), fetchall=True)
     return bool(assns)
 
-@app.context_processor
+@application.context_processor
 def assignment_processor():
     '''Template utility function: is thread_id assigned to user_id?'''
     def fn(thread_id, user_id):
         return assigned(thread_id, user_id)
     return dict(assigned=fn)
 
-@app.context_processor
+@application.context_processor
 @with_db(dbms)
 def done_processor(db):
     '''Template utility function: how many posts in thread X has user Y coded?'''
@@ -201,7 +203,7 @@ def done_processor(db):
     return dict(done=done)
 
 
-@app.route('/assign', methods=['GET', 'POST'])
+@application.route('/assign', methods=['GET', 'POST'])
 @with_db(dbms)
 def assign(db):
     '''Logic for thread assigner'''
@@ -249,7 +251,7 @@ def goto_post(db, userid, threadid, rel_idx):
     return None
 
 
-@app.route('/annotate', methods=['GET', 'POST'])
+@application.route('/annotate', methods=['GET', 'POST'])
 @login_required
 @with_db(dbms)
 def annotate(db):
@@ -261,7 +263,7 @@ def annotate(db):
         return redirect(url_for('annotate_thread', threadid=threadid))
     return render_template('annotate.html', assigned=assigned)
 
-@app.route('/annotate/<threadid>', methods=['GET', 'POST'])
+@application.route('/annotate/<threadid>', methods=['GET', 'POST'])
 @login_required
 @with_db(dbms)
 def annotate_thread(db, threadid):
@@ -286,10 +288,10 @@ def annotate_thread(db, threadid):
 
 # Main page
 
-@app.route('/')
+@application.route('/')
 def index():
     return render_template('index.html')
 
 
 if __name__ == "__main__":
-    app.run()
+    application.run()
