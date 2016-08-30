@@ -1,6 +1,7 @@
 data/
 old/
 annotator.pyc
+__init__.pyc
 *.DS_Store
 requirements.txt
 *.css
