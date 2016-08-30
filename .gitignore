@@ -1,5 +1,5 @@
 data/
 old/
-*.pyc
+annotator.pyc
 *.DS_Store
 *.css
