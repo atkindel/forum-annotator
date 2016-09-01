@@ -188,6 +188,7 @@ def assigned(db, thread_id, user_id):
 
 @application.context_processor
 def assignment_processor():
+        # should this be specific to code_type? -MY
     '''Template utility function: is thread_id assigned to user_id?'''
     def fn(thread_id, user_id):
         return assigned(thread_id, user_id)
@@ -196,7 +197,8 @@ def assignment_processor():
 @application.context_processor
 @with_db(dbms)
 def done_processor(db):
-    '''Template utility function: how many posts in thread X has user Y coded?'''
+        # should this be specific to code_type? -MY
+    '''Template utility function: how many posts in thread X has user Y coded?''' 
     def done(thread_id, user_id):
         ct = done_posts(user_id, thread_id)
         total = total_posts(thread_id)
@@ -210,6 +212,7 @@ def assign(db):
     '''Logic for thread assigner'''
     threads = query(db, "SELECT mongoid, title FROM threads WHERE level = 1", fetchall=True)
     users = query(db, "SELECT id, first_name, last_name FROM users ORDER BY id", fetchall=True)
+    code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
     if request.method == 'POST':
         for key in request.form.keys():
             ids = eval(key)
@@ -217,7 +220,7 @@ def assign(db):
             thread = ids['thread']
             user = ids['user']
             if value == 'on' and not assigned(thread, user):
-                query(db, "INSERT INTO assignments(thread_id, user_id, next_post, finished) VALUES ('%s','%s','%s','%s')" % (thread, user, thread, 0))
+                query(db, "INSERT INTO assignments(thread_id, user_id, code_type, next_post, finished) VALUES ('%s','%s','%s','%s','%s')" % (thread, user, code_type, thread, 0))
     return render_template('assignments.html', users=users, threads=threads)
 
 @application.route('/tables/<tablename>/<limit>')
@@ -258,7 +261,8 @@ def goto_post(db, userid, threadid, rel_idx):
         return "Last post. This thread is finished!"
     thread = get_thread(threadid)
     post_id = thread[post_idx]['mongoid']
-    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d" % (rel_idx, post_id, threadid, userid))
+    code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
+    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d AND code_type = %s " % (rel_idx, post_id, threadid, userid, code_type))
     return None
 
 
@@ -279,6 +283,7 @@ def annotate(db):
 @with_db(dbms)
 def annotate_thread(db, threadid):
     userid = g.user['id']
+    code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
     comments = None
     if request.method == 'POST':
         if 'next' in request.form.keys():
@@ -289,16 +294,15 @@ def annotate_thread(db, threadid):
             code_value = request.form['codevalue']
             comment = request.form['comment']
             postid = request.form['postid']
-            code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
-            existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid), fetchall=True)
+            existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d AND code_type = '%s'" % (postid, userid, code_type), fetchall=True)
             user_codes = [code for sublist in map(dict.values, existing) for code in sublist]
             if code_value not in user_codes:
                 query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
             msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
-    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).next().values()[0]
-    comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True)
+    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]
+    comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d AND code_type = '%s'" % (next_post_id, userid, code_type), fetchall=True)
     posts, next_post = fetch_posts(threadid, next_post_id)
     return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
 
