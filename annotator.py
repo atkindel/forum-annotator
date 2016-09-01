@@ -17,7 +17,7 @@ from dbutils import with_db, query
 
 
 # Configuration
-DEV_INSTANCE = True
+DEV_INSTANCE = False
 THREADS = 'data/threads.csv'
 SECRET_KEY = os.environ['SECRET_KEY']
 
