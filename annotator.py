@@ -287,14 +287,15 @@ def annotate_thread(db, threadid):
             msg = goto_post(userid, threadid, -1)
         elif 'code' in request.form.keys():
             code_value = request.form['codevalue']
-            comment = request.form['comment']
-            postid = request.form['postid']
-            code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
-            existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid), fetchall=True)
-            user_codes = [code for sublist in map(dict.values, existing) for code in sublist]
-            if code_value not in user_codes:
-                query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
-            msg = goto_post(userid, threadid, 1)
+            if code_value != "blank":
+                comment = request.form['comment']
+                postid = request.form['postid']
+                code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
+                existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid), fetchall=True)
+                user_codes = [code for sublist in map(dict.values, existing) for code in sublist]
+                if code_value not in user_codes:
+                    query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
+                msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
     next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).next().values()[0]
