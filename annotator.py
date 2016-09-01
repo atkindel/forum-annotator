@@ -198,7 +198,7 @@ def assignment_processor():
 @with_db(dbms)
 def done_processor(db):
         # should this be specific to code_type? -MY
-    '''Template utility function: how many posts in thread X has user Y coded?''' 
+    '''Template utility function: how many posts in thread X has user Y coded?'''
     def done(thread_id, user_id):
         ct = done_posts(user_id, thread_id)
         total = total_posts(thread_id)
@@ -262,7 +262,7 @@ def goto_post(db, userid, threadid, rel_idx):
     thread = get_thread(threadid)
     post_id = thread[post_idx]['mongoid']
     code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
-    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d AND code_type = %s " % (rel_idx, post_id, threadid, userid, code_type))
+    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d AND code_type = '%s' " % (rel_idx, post_id, threadid, userid, code_type))
     return None
 
 
@@ -292,13 +292,22 @@ def annotate_thread(db, threadid):
             msg = goto_post(userid, threadid, -1)
         elif 'code' in request.form.keys():
             code_value = request.form['codevalue']
-            comment = request.form['comment']
-            postid = request.form['postid']
-            existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d AND code_type = '%s'" % (postid, userid, code_type), fetchall=True)
-            user_codes = [code for sublist in map(dict.values, existing) for code in sublist]
-            if code_value not in user_codes:
-                query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
-            msg = goto_post(userid, threadid, 1)
+            print code_value
+            if code_value == "blank":
+                msg = "Submit a code for this post."
+            else:
+                comment = request.form['comment']
+                postid = request.form['postid']
+                code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
+                replace = False
+                try:
+                    existing = query(db, "SELECT code_id FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid)).next()['code_id']
+                except StopIteration:
+                    query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
+                else:
+                    query(db, "UPDATE codes SET code_value = '%s', comment = '%s' WHERE code_id = %d" % (code_value, comment, existing))
+                finally:
+                    msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
     next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]
