@@ -40,6 +40,7 @@ CREATE TABLE `threads` (
 
 DROP TABLE IF EXISTS `codes`;
 CREATE TABLE `codes` (
+    code_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     user_id INTEGER NOT NULL,
     post_id TEXT NOT NULL,
     code_type TEXT NOT NULL,
