@@ -8,7 +8,7 @@
         <li class="post">
             <em>{{post.mongoid}} by {{post.author_username}}</em>
             <br>
-            {{post.body}}
+            {{post.body.decode(encoding='UTF-8')}}
         </li>
     {% endfor %}
     </ol>
@@ -23,33 +23,36 @@
         {% if comments %}
         <div class="commentbox">
             <h3>Your previous code on this post:</h3>
-            <ol>
+            <ul>
                 {% for comment in comments %}
-                    <li>{{comment.comment}}</li>
+                    <li>
+                        <em>{{comment.code_value}}</em>{% if comment.comment %}: {{comment.comment}}{% endif %}
+                    </li>
                 {% endfor %}
-            </ol>
+            </ul>
         </div>
         {% endif %}
 
     </div>
 
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
-    <h2 align=left>Where is this comment directed?
-    <select name=codevalue>
-    <option value="blank"></option>
-    <option value="top">top-level post</option>
-    <option value="everyone">everyone else</option>
-    <option value="yes">short yes</option>
-    <option value="vague">no clear target</option>
-    <option value="off">off-topic</option>
-    </select></h2>
-        <h3>Additional Comments:</h3>
+    <h3 align=left>Where is this comment directed?</h3>
+        <select name=codevalue>
+            <option value="top">top-level post</option>
+            <option value="everyone">everyone else</option>
+            <option value="yes">short yes</option>
+            <option value="vague">no clear target</option>
+            <option value="off">off-topic</option>
+        </select>
+        <h3>Additional comments:</h3>
         <input type="text" name="comment">
         <input type="hidden" value="{{next.mongoid}}" name="postid">
         <br>
         <input type="submit" value="Add comment" name="code">
         <br><br>
-        <!--<input type="submit" value="Next post" name="next">-->
+        {% if comments %}
+            <input type="submit" value="Next post" name="next">
+        {% endif %}
         <input type="submit" value="Previous post" name="prev">
     </form>
     <br>
