@@ -258,7 +258,7 @@ def goto_post(db, userid, threadid, rel_idx):
         return "Last post. This thread is finished!"
     thread = get_thread(threadid)
     post_id = thread[post_idx]['mongoid']
-    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d" % (rel_idx, post_id, threadid, userid))
+    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d" % (rel_idx, post_id, threadid, userid)) # needs to account for the code_type
     return None
 
 
@@ -268,7 +268,7 @@ def goto_post(db, userid, threadid, rel_idx):
 def annotate(db):
     '''Logic for user annotation of forum posts.'''
     userid = g.user['id']
-    assigned = query(db, "SELECT a.thread_id, t.title, a.next_post FROM assignments a JOIN threads t ON thread_id = mongoid WHERE user_id = %d" % userid, fetchall=True)
+    assigned = query(db, "SELECT a.thread_id, t.title, a.next_post FROM assignments a JOIN threads t ON thread_id = mongoid WHERE user_id = %d" % userid, fetchall=True) # needs to account for the code_type
     if request.method == 'POST':
         threadid = request.form['thread']
         return redirect(url_for('annotate_thread', threadid=threadid))
@@ -290,15 +290,15 @@ def annotate_thread(db, threadid):
             comment = request.form['comment']
             postid = request.form['postid']
             code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
-            existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid), fetchall=True)
+            existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid), fetchall=True) # needs to account for the code_type
             user_codes = [code for sublist in map(dict.values, existing) for code in sublist]
             if code_value not in user_codes:
                 query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
             msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
-    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).next().values()[0]
-    comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True)
+    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d" % (threadid, userid)).next().values()[0] # needs to account for the code_type
+    comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d" % (next_post_id, userid), fetchall=True) # needs to account for the code_type
     posts, next_post = fetch_posts(threadid, next_post_id)
     return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
 
