@@ -66,10 +66,10 @@ def log():
 
 @application.cli.command('build')
 def build_db():
-    '''Build MySQL tables for development.'''
+    '''Rebuild MySQL tables for development.'''
     # XXX: Don't use this in production
     if DEV_INSTANCE:
-        subprocess.call("mysql -u %s -p%s < ./sql/schema.sql" % (DB_USER, DB_PASS), shell=True)
+        subprocess.call("mysql -h %s -P %d -D %s -u %s -p%s < ./sql/schema.sql" % (dbms['host'], dbms['port'], dbms['name'], dbms['username'], dbms['password']), shell=True)
 
 
 @application.cli.command('load')

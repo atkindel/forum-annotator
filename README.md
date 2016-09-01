@@ -3,12 +3,16 @@ Web-based tool to scaffold analysis of hierarchically structured text.
 
 ## To run locally...
 
-* install Flask (`sudo pip install flask` unless you're on Windows)
-* point Flask at the app (from the base directory of the app, `export FLASK_APP=annotator.py`)
+* clone this repo to your machine (`git clone https://github.com/atkindel/forum-annotator.git`)
+* create a dedicated virtualenv for this app instance
+    * more on this here: https://virtualenvwrapper.readthedocs.io/en/latest/
+* configure database access (see below-- recommend using localhost for a local development instance)
+* run the configuration script (`./configure.sh`)
+    * this should only need to run once per install
 * set up the database if needed
-    * initialize the schema (`flask build` creates the schema on a MySQL instance running on localhost)
+    * initialize the schema (`flask build` recreates the schema on the configured database; note that this will overwrite existing data!)
     * load the thread data (`flask load`, presuming the data is available at `./data/threads.csv`)
-* start the app (`flask run`)
+* start the app (`./annotator.py`)
 * navigate to `localhost:5000/admin` to create a user account
 * once you've created a user account you can log in and out and assign threads to that user
 
