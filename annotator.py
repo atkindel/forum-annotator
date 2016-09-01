@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # annotator.py
 # Core logic for forum data annotator application.
 #
