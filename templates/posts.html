@@ -38,6 +38,7 @@
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
     <h3 align=left>Where is this comment directed?</h3>
         <select name=codevalue>
+            <option value="blank" selected="selected"></option>
             <option value="top">top-level post</option>
             <option value="everyone">everyone else</option>
             <option value="yes">short yes</option>
