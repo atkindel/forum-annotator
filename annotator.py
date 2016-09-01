@@ -291,10 +291,14 @@ def annotate_thread(db, threadid):
                 comment = request.form['comment']
                 postid = request.form['postid']
                 code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
+                # These next four lines are built to prevent people from over-writing previous codes, right? 
+                # If so, it may be unnecessary. The only reason a user would revisit an old code is to re-write!
+                # We will only ever want one code per user per post per code_type (+ an optional comment)
                 existing = query(db, "SELECT code_value FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid), fetchall=True)
                 user_codes = [code for sublist in map(dict.values, existing) for code in sublist]
                 if code_value not in user_codes:
                     query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
+                ################ End question ################
                 msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
