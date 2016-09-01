@@ -8,7 +8,7 @@
         <li class="post">
             <em>{{post.mongoid}} by {{post.author_username}}</em>
             <br>
-            {{post.body.decode(encoding='UTF-8')}}
+            {{post.body.decode(encoding='UTF-8', errors='replace')}}
         </li>
     {% endfor %}
     </ol>
@@ -17,7 +17,7 @@
         <div class="post">
             <b>Now coding:</b> <em>{{next.mongoid}} by {{next.author_username}}</em>
             <br><br>
-            {{next.body.decode(encoding='UTF-8')}}
+            {{next.body.decode(encoding='UTF-8', errors='replace')}}
         </div>
 
         {% if comments %}

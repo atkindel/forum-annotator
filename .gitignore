@@ -3,7 +3,6 @@ old/
 annotator.pyc
 __init__.pyc
 *.DS_Store
-*.css
 setup.cfg
 
 # Elastic Beanstalk Files

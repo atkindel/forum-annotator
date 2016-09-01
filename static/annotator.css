@@ -1,0 +1,85 @@
+body {
+  font-family: 'Helvetica Neue';
+  font-size: 10pt;
+}
+.border {
+  border-style: dashed;
+  border-width: thin;
+  border-color: lightgray;
+  border-radius: 4px;
+}
+.headings {
+  text-align: left;
+  font-style: italic;
+  font-weight: normal;
+}
+.post {
+  width: 500px;
+  margin: 5px;
+  padding: 5px;
+  height: auto;
+  border-style: dashed;
+  border-width: thin;
+  border-color: lightgray;
+  border-radius: 4px;
+  background-color: ghostwhite;
+}
+.commentbox {
+  width: 500px;
+  margin: 5px;
+  padding: 5px;
+  height: auto;
+  border-style: dashed;
+  border-width: thin;
+  border-color: lightgray;
+  border-radius: 4px;
+  background-color: ghostwhite;
+}
+h2 {
+  text-align: center;
+  text-align: left;
+  font-style: italic;
+  font-weight: normal;
+}
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-align: left;
+  font-style: italic;
+  font-weight: normal;
+}
+input[type=submit] {
+  font-family: 'Helvetica Neue';
+  font-size: 11pt;
+}
+h1 {
+  text-align: center;
+  font-family: cursive;
+  font-size: 18pt;
+  font-style: oblique;
+  font-weight: normal;
+  border-style: dashed;
+  border-width: thin;
+  border-color: lightgray;
+  border-radius: 4px;
+  margin: -0.5em -2em 0.67em -2em;
+  background-color: ghostwhite;
+  opacity: 1.0;
+}
+h1 a {
+  text-decoration: none;
+  color: black;
+}
+.messages {
+  border-style: dashed;
+  border-width: thin;
+  border-color: lightgray;
+  border-radius: 4px;
+  margin-top: -1.5em;
+  padding-top: 0.5em;
+}
+.messages li {
+  font-size: 8pt;
+}
