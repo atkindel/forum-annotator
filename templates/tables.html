@@ -1,0 +1,24 @@
+{% extends "annotator.html" %}
+{% block title %}Table '{{tablename}}'{% endblock %}
+{% block body %}
+    <h2>View tables</h2>
+    <h3>{{tablename}}</h3>
+    <table class="table header" border=1>
+        <tr>
+            {% for label in header %}
+                <td><em>{{label}}</em></td>
+            {% endfor %}
+        </tr>
+        {% for row in table %}
+        <tr>
+            {% for datum in row %}
+                {% if datum == 'body' %}
+                    <td title='{{datum}}'>{{row[datum].decode(encoding='UTF-8')}}</td>
+                {% else %}
+                    <td title='{{datum}}'>{{row[datum]}}</td>
+                {% endif %}
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

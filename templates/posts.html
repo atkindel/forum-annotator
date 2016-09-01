@@ -17,7 +17,7 @@
         <div class="post">
             <b>Now coding:</b> <em>{{next.mongoid}} by {{next.author_username}}</em>
             <br><br>
-            {{next.body}}
+            {{next.body.decode(encoding='UTF-8')}}
         </div>
 
         {% if comments %}

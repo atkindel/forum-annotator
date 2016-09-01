@@ -220,6 +220,16 @@ def assign(db):
                 query(db, "INSERT INTO assignments(thread_id, user_id, next_post, finished) VALUES ('%s','%s','%s','%s')" % (thread, user, thread, 0))
     return render_template('assignments.html', users=users, threads=threads)
 
+@application.route('/tables/<tablename>/<limit>')
+@application.route('/tables/<tablename>')
+@superuser_required
+@with_db(dbms)
+def tables(db, tablename, limit='100'):
+    '''Display route for database tables. For debugging purposes.'''
+    table = query(db, "SELECT * FROM %s LIMIT %s" % (tablename, limit), fetchall=True)
+    header = table[0].keys()
+    return render_template('tables.html', tablename=tablename, table=table, header=header)
+
 
 # Annotator user views
 
