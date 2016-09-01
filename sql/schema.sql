@@ -10,6 +10,7 @@ CREATE TABLE `assignments` (
     assn_id INTEGER PRIMARY KEY AUTO_INCREMENT,
     user_id INTEGER NOT NULL,
     thread_id TEXT NOT NULL,
+    code_type TEXT NOT NULL,
     next_post TEXT DEFAULT NULL,
     done INTEGER DEFAULT 0,
     finished BOOLEAN NOT NULL
@@ -41,6 +42,8 @@ DROP TABLE IF EXISTS `codes`;
 CREATE TABLE `codes` (
     user_id INTEGER NOT NULL,
     post_id TEXT NOT NULL,
+    code_type TEXT NOT NULL,
+    code_value TEXT,
     comment TEXT
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 

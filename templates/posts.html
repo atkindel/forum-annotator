@@ -22,7 +22,7 @@
 
         {% if comments %}
         <div class="commentbox">
-            <h3>Your comments on this post:</h3>
+            <h3>Your previous code on this post:</h3>
             <ol>
                 {% for comment in comments %}
                     <li>{{comment.comment}}</li>
@@ -30,15 +30,26 @@
             </ol>
         </div>
         {% endif %}
+
     </div>
 
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
+    <h2 align=left>Where is this comment directed?
+    <select name=codevalue>
+    <option value="blank"></option>
+    <option value="top">top-level post</option>
+    <option value="everyone">everyone else</option>
+    <option value="yes">short yes</option>
+    <option value="vague">no clear target</option>
+    <option value="off">off-topic</option>
+    </select></h2>
+        <h3>Additional Comments:</h3>
         <input type="text" name="comment">
         <input type="hidden" value="{{next.mongoid}}" name="postid">
         <br>
         <input type="submit" value="Add comment" name="code">
         <br><br>
-        <input type="submit" value="Next post" name="next">
+        <!--<input type="submit" value="Next post" name="next">-->
         <input type="submit" value="Previous post" name="prev">
     </form>
     <br>
