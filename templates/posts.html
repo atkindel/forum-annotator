@@ -9,6 +9,12 @@
             <em>{{post.mongoid}} by {{post.author_username}}</em>
             <br>
             {{post.body.decode(encoding='UTF-8', errors='replace')}}
+            <!-- 
+            Ideally this would all be in a table rather than a list but I can format later
+            {% if post.level is equalto 3 %}
+                <input checkbox name="commentcheck" value="{{post.mongoid}}">
+            {% endif %}
+            -->
         </li>
     {% endfor %}
     </ol>
@@ -40,7 +46,21 @@
         <select name=codevalue>
             <option value="blank" selected="selected"></option>
             <option value="top">top-level post</option>
-            <option value="everyone">everyone else</option>
+            <!-- 
+            Since jinja doesn't have a max() this is my next best attempt
+            The "other commenters" option should be tied in with check boxes above
+            
+            {% for post in posts | reverse | list[0] %}
+                {% if post.level is equalto 3 %}
+                    <option value="reply">main reply</option>
+                {% endif %}
+                {% if post.level is equalto 4 %}
+                    <option value="reply">main reply</option>
+                    <option value="commenters">other commenters</option>
+                    <option value="everyone">everyone else</option>
+                {% endif %}
+            {% endfor %}
+            -->
             <option value="yes">short yes</option>
             <option value="vague">no clear target</option>
             <option value="off">off-topic</option>
