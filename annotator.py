@@ -292,10 +292,15 @@ def annotate_thread(db, threadid):
             msg = goto_post(userid, threadid, -1)
         elif 'code' in request.form.keys():
             code_value = request.form['codevalue']
+            commentcheck = request.form['commentcheck'] # if there are no checks, will this be an error, an empty list, or an empty string?
             print code_value
             if code_value == "blank":
                 msg = "Submit a code for this post."
+            #elif code_value == "commenters" and commentcheck == []:
+            #    msg = "Please check off the targeted commenters ."
             else:
+                if code_value == "commenters":
+                        code_value == code_value+"|"+"|".join(commentcheck)
                 comment = request.form['comment']
                 postid = request.form['postid']
                 code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
