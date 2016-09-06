@@ -3,12 +3,18 @@
 {% block body %}
     <h2>{{threadid}}</h2>
 
+    <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
+
+    <!-- TODO: Format below as a table, indenting with level -->
     <ol>
     {% for post in posts %}
         <li class="post">
             <em>{{post.mongoid}} by {{post.author_username}}</em>
             <br>
             {{post.body.decode(encoding='UTF-8', errors='ignore')}}
+            {% if next.level == 4 %}
+                <input type="checkbox" name="target_{{post.mongoid}}" value="{{post.mongoid}}">
+            {% endif %}
         </li>
     {% endfor %}
     </ol>
@@ -35,12 +41,17 @@
 
     </div>
 
-    <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
     <h3 align=left>Where is this comment directed?</h3>
         <select name=codevalue>
             <option value="blank" selected="selected"></option>
             <option value="top">top-level post</option>
-            <option value="everyone">everyone else</option>
+            {% if next.level >= 3 %}
+                <option value="reply">main reply</option>
+            {% endif %}
+            {% if next.level == 4 %}
+                <option value="commenters">other commenters</option>
+                <option value="everyone">everyone else</option>
+            {% endif %}
             <option value="yes">short yes</option>
             <option value="vague">no clear target</option>
             <option value="off">off-topic</option>
@@ -55,7 +66,9 @@
             <input type="submit" value="Next post" name="next">
         {% endif %}
         <input type="submit" value="Previous post" name="prev">
+
     </form>
+
     <br>
     <a href="{{ url_for('annotate') }}">Annotate a different thread...</a>
 {% endblock %}

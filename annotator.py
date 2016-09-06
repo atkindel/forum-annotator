@@ -285,6 +285,7 @@ def annotate_thread(db, threadid):
     userid = g.user['id']
     code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
     comments = None
+    msg = None
     if request.method == 'POST':
         if 'next' in request.form.keys():
             msg = goto_post(userid, threadid, 1)
@@ -292,22 +293,37 @@ def annotate_thread(db, threadid):
             msg = goto_post(userid, threadid, -1)
         elif 'code' in request.form.keys():
             code_value = request.form['codevalue']
-            print code_value
             if code_value == "blank":
                 msg = "Submit a code for this post."
             else:
                 comment = request.form['comment']
                 postid = request.form['postid']
+                comment_ids = None
+                if code_value == 'commenters':
+                    comment_ids = [request.form[k] for k in request.form.keys() if 'target' in k]
+                    targets = '||'.join(comment_ids)
                 code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
-                replace = False
                 try:
                     existing = query(db, "SELECT code_id FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid)).next()['code_id']
                 except StopIteration:
-                    query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
+                    if code_value == 'commenters':
+                        if not comment_ids:
+                            msg = "Which commenters was this post responding to?"
+                        else:
+                            query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, targets, comment))
+                    else:
+                        query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
                 else:
-                    query(db, "UPDATE codes SET code_value = '%s', comment = '%s' WHERE code_id = %d" % (code_value, comment, existing))
+                    if code_value == 'commenters':
+                        if not comment_ids:
+                            msg = "Which commenters was this post responding to?"
+                        else:
+                            query(db, "UPDATE codes SET code_value = '%s', comment = '%s', targets = '%s' WHERE code_id = %d" % (code_value, comment, targets, existing))
+                    else:
+                        query(db, "UPDATE codes SET code_value = '%s', comment = '%s' WHERE code_id = %d" % (code_value, comment, existing))
                 finally:
-                    msg = goto_post(userid, threadid, 1)
+                    if not msg:
+                        msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
     next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]

@@ -45,6 +45,7 @@ CREATE TABLE `codes` (
     post_id TEXT NOT NULL,
     code_type TEXT NOT NULL,
     code_value TEXT,
+    targets TEXT,
     comment TEXT
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
