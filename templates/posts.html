@@ -9,7 +9,7 @@
     <ol>
     {% for post in posts %}
         <li class="post">
-            <em>{{post.mongoid}} by {{post.author_username}}</em>
+            <em>{{post.posttype}} by {{post.author_username}}</em>
             <br>
             {{post.body.decode(encoding='UTF-8', errors='ignore')}}
             {% if next.level == 4 %}
@@ -21,7 +21,7 @@
 
     <div id="annotatethread">
         <div class="post">
-            <b>Now coding:</b> <em>{{next.mongoid}} by {{next.author_username}}</em>
+            <b>Now coding:</b> <em>{{next.posttype}} by {{next.author_username}}</em>
             <br><br>
             {{next.body.decode(encoding='UTF-8', errors='ignore')}}
         </div>
