@@ -242,11 +242,21 @@ def get_thread(db, threadid):
     return query(db, "SELECT * FROM threads WHERE mongoid = '%s' UNION ALL SELECT * FROM threads WHERE comment_thread_id = '%s'" % (threadid, threadid), fetchall=True)
 
 def fetch_posts(threadid, next_post_id):
-    '''Fetch all posts completed up to mongoid of next post.'''
-    thread = get_thread(threadid)
-    history = []
+    '''Fetch all posts completed up to mongoid of next post within the main reply sub-group.'''
+    thread = get_thread(threadid) # shouldn't this have a db argument? Or does @with_db take care of it?
+    parent_id = query(db, "SELECT parent_ids FROM threads WHERE mongoid = '%s'" % (next_post_id).values()[0]
+    history = []                  # Want to make sure this isn't sneaking through on some gloabl pass-through for some reason
     for post in thread:
-        history.append(post)
+        # before adding, check to see if post is:
+        # a) top level-post
+        # b) main reply with a mongoid that matches parent_ids of next_post_id
+        # c) main reply that matches parent_ids of next_post_id
+        if post['level'] == '1':
+                history.append(post)
+        elif post['mongoid'] == parent_id:
+                history.append(post)
+        elif post['parent_ids'] == parent_id:
+                history.append(post)
         if post['mongoid'] == next_post_id:
             return history[:-1], history[-1]
 
@@ -326,7 +336,7 @@ def annotate_thread(db, threadid):
                         msg = goto_post(userid, threadid, 1)
         if msg:
             flash(msg)
-    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]
+    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' AND user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]
     comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d AND code_type = '%s'" % (next_post_id, userid, code_type), fetchall=True)
     posts, next_post = fetch_posts(threadid, next_post_id)
     return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
