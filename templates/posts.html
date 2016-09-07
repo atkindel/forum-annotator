@@ -1,7 +1,7 @@
 {% extends "annotator.html" %}
 {% block title %}{{threadid}}{% endblock %}
 {% block body %}
-    <h2>{{threadid}}</h2>
+    <h2>{{titleof(threadid)}}</h2>
 
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" method="POST">
 
@@ -9,7 +9,12 @@
     <ol>
     {% for post in posts %}
         <li class="post">
-            <em>{{post.mongoid}} by {{post.author_username}}</em>
+            <b>{{post.author_username}}</b>
+            {% if post.level == 1 %}
+                <em>Top-level post</em>
+            {% elif post.level == 2 %}
+                <em>Main reply</em>
+            {% endif %}
             <br>
             {{post.body.decode(encoding='UTF-8', errors='ignore')}}
             {% if next.level == 4 %}
@@ -21,7 +26,14 @@
 
     <div id="annotatethread">
         <div class="post">
-            <b>Now coding:</b> <em>{{next.mongoid}} by {{next.author_username}}</em>
+            <u>Now coding:</u>
+            <br>
+            <b>{{next.author_username}}</b>
+            {% if next.level == 1 %}
+                <em>Top-level post</em>
+            {% elif next.level == 2 %}
+                <em>Main reply</em>
+            {% endif %}
             <br><br>
             {{next.body.decode(encoding='UTF-8', errors='ignore')}}
         </div>

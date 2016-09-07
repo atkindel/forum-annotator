@@ -52,6 +52,10 @@ def done_posts(db, user_id, thread_id):
 def set_finished(db, user_id, thread_id):
     query(db, "UPDATE assignments SET finished = 1 WHERE thread_id = '%s' and user_id = %d" % (thread_id, user_id))
 
+@with_db(dbms)
+def title_of_thread(db, thread_id):
+    return query(db, "SELECT title FROM threads WHERE mongoid = '%s'" % thread_id, fetchall=True)[0]['title']
+
 
 # Clickstream logging
 
@@ -241,14 +245,26 @@ def get_thread(db, threadid):
     '''Given a top-level post mongoid, return the corresponding thread.'''
     return query(db, "SELECT * FROM threads WHERE mongoid = '%s' UNION ALL SELECT * FROM threads WHERE comment_thread_id = '%s'" % (threadid, threadid), fetchall=True)
 
-def fetch_posts(threadid, next_post_id):
+@with_db(dbms)
+def fetch_posts(db, threadid, next_post_id):
     '''Fetch all posts completed up to mongoid of next post.'''
     thread = get_thread(threadid)
     history = []
+    next_post = query(db, "SELECT * FROM threads WHERE mongoid = '%s'" % next_post_id, fetchall=True)[0]
+    level = next_post['level']
+    next_parent_id = None
+    if level >= 3:
+        next_parent_id = next_post['parent_ids']
     for post in thread:
-        history.append(post)
         if post['mongoid'] == next_post_id:
-            return history[:-1], history[-1]
+            return history, next_post
+        else:
+            post_parent_id = None
+            post_level = post['level']
+            if post['level'] >= 3:
+                post_parent_id = post['parent_ids']
+            if ((post_level == 1) or (post_level == 2 and post['mongoid'] == next_parent_id) or (post_level >= 3 and post_parent_id == next_parent_id)) and post['mongoid'] != next_post_id:
+                history.append(post)
 
 @with_db(dbms)
 def goto_post(db, userid, threadid, rel_idx):
@@ -264,6 +280,14 @@ def goto_post(db, userid, threadid, rel_idx):
     code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
     query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d AND code_type = '%s' " % (rel_idx, post_id, threadid, userid, code_type))
     return None
+
+@application.context_processor
+def titleof_processor():
+        # should this be specific to code_type? -MY
+    '''Template utility function: get thread title from threadid'''
+    def titleof(thread_id):
+        return title_of_thread(thread_id)
+    return dict(titleof=titleof)
 
 
 @application.route('/annotate', methods=['GET', 'POST'])
