@@ -72,6 +72,10 @@ h1 a {
   text-decoration: none;
   color: black;
 }
+textarea {
+  width: 200px;
+  height: 100px;
+}
 .messages {
   border-style: dashed;
   border-width: thin;

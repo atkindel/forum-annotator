@@ -243,7 +243,20 @@ def tables(db, tablename, limit='100'):
 @with_db(dbms)
 def get_thread(db, threadid):
     '''Given a top-level post mongoid, return the corresponding thread.'''
-    return query(db, "SELECT * FROM threads WHERE mongoid = '%s' UNION ALL SELECT * FROM threads WHERE comment_thread_id = '%s'" % (threadid, threadid), fetchall=True)
+    raw_thread = query(db, "SELECT * FROM threads WHERE mongoid = '%s' UNION ALL SELECT * FROM threads WHERE comment_thread_id = '%s'" % (threadid, threadid), fetchall=True)
+    # Split thread into top-level post+main replies and comments
+    mainreplies = filter(lambda x: x['level'] <= 2, raw_thread)
+    comments = filter(lambda x: x['level'] >= 3, raw_thread)
+    thread = []
+    for mr in mainreplies:
+        # Append main reply
+        thread.append(mr)
+        pid = mr['mongoid']
+        # Immediately append any subreplies to this main reply
+        subreplies = filter(lambda x: x['parent_ids'] == pid, comments)
+        for subreply in subreplies:
+            thread.append(subreply)
+    return thread
 
 @with_db(dbms)
 def fetch_posts(db, threadid, next_post_id):
