@@ -3,84 +3,17 @@
 {% block body %}
     <h2>{{titleof(threadid)}}</h2>
 
+    <!-- TODO: What variables does this template receive? -->
+
     <form action="{{ url_for('annotate_thread', threadid=threadid) }}" id="codeform" method="POST">
 
-    <!-- TODO: Format below as a table, indenting with level -->
-    <ol>
-    {% for post in posts %}
-        <li class="post">
-            <b>{{post.author_username}}</b>
-            {% if post.level == 1 %}
-                <em>Top-level post</em>
-            {% elif post.level == 2 %}
-                <em>Main reply</em>
-            {% endif %}
-            <br>
-            {{post.body.decode(encoding='UTF-8', errors='ignore')}}
-            {% if next.level == 4 %}
-                <input type="checkbox" name="target_{{post.mongoid}}" value="{{post.mongoid}}">
-            {% endif %}
-        </li>
-    {% endfor %}
-    </ol>
+    {% include "posts/display_thread.html" %}
 
-    <div id="annotatethread">
-        <div class="post">
-            <u>Now coding:</u>
-            <br>
-            <b>{{next.author_username}}</b>
-            {% if next.level == 1 %}
-                <em>Top-level post</em>
-            {% elif next.level == 2 %}
-                <em>Main reply</em>
-            {% endif %}
-            <br><br>
-            {{next.body.decode(encoding='UTF-8', errors='ignore')}}
-        </div>
+    {% include "posts/code_post.html" %}
 
-        {% if comments %}
-        <div class="commentbox">
-            <h3>Your previous code on this post:</h3>
-            <ul>
-                {% for comment in comments %}
-                    <li>
-                        <em>{{comment.code_value}}</em>{% if comment.comment %}: {{comment.comment}}{% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-
-    </div>
-
-    <h3 align=left>Where is this comment directed?</h3>
-        <select name=codevalue>
-            <option value="blank" selected="selected"></option>
-            <option value="top">top-level post</option>
-            {% if next.level >= 3 %}
-                <option value="reply">main reply</option>
-            {% endif %}
-            {% if next.level == 4 %}
-                <option value="commenters">other commenters</option>
-                <option value="everyone">everyone else</option>
-            {% endif %}
-            <option value="yes">short yes</option>
-            <option value="vague">no clear target</option>
-            <option value="off">off-topic</option>
-        </select>
-        <h3>Additional comments:</h3>
-        <textarea form="codeform" name="comment"></textarea>
-        <input type="hidden" value="{{next.mongoid}}" name="postid">
-        <br>
-        <input type="submit" value="Add comment" name="code">
-        <br><br>
-        {% if comments %}
-            <input type="submit" value="Next post" name="next">
-        {% endif %}
-        <input type="submit" value="Previous post" name="prev">
+    {% include "posts/code_submit.html" %}
 
     </form>
 
-    <br>
-    <a href="{{ url_for('annotate') }}">Annotate a different thread...</a>
+    <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
 {% endblock %}

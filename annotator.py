@@ -333,7 +333,7 @@ def annotate_thread(db, threadid):
             if code_value == "blank":
                 msg = "Submit a code for this post."
             else:
-                comment = request.form['comment']
+                comment = request.form['comment'].replace("`", "").replace("'", "`")  # This replace 'safely' handles contractions
                 postid = request.form['postid']
                 comment_ids = None
                 if code_value == 'commenters':

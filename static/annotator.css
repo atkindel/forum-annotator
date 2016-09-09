@@ -14,7 +14,7 @@ body {
   font-weight: normal;
 }
 .post {
-  width: 500px;
+  width: 66%;
   margin: 5px;
   padding: 5px;
   height: auto;
@@ -35,6 +35,12 @@ body {
   border-radius: 4px;
   background-color: ghostwhite;
 }
+.annotatethread {
+  margin-left: 5%;
+}
+.codebox {
+  margin-left: 2%;
+}
 h2 {
   text-align: center;
   text-align: left;
@@ -49,6 +55,10 @@ h6 {
   text-align: left;
   font-style: italic;
   font-weight: normal;
+}
+.user {
+  font-size: 16px;
+  font-weight: bold;
 }
 input[type=submit] {
   font-family: 'Helvetica Neue';

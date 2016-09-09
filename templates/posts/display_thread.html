@@ -1,0 +1,20 @@
+<!-- TODO: Format below as a table, indenting with level -->
+<ul>
+{% for post in posts %}
+    <li class="post">
+        <div class="user">
+            {{post.author_username}}
+            {% if next.level == 4 %}
+                <input type="checkbox" name="target_{{post.mongoid}}" value="{{post.mongoid}}">
+            {% endif %}
+        </div>
+        {% if post.level == 1 %}
+            <em>Top-level post</em>
+        {% elif post.level == 2 %}
+            <em>Main reply</em>
+        {% endif %}
+        <br><br>
+        {{post.body.decode(encoding='UTF-8', errors='ignore')}}
+    </li>
+{% endfor %}
+</ul>

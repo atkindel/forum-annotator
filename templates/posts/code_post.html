@@ -1,0 +1,29 @@
+<div id="annotatethread">
+    <div class="post">
+        <u>Now coding:</u>
+        <br>
+        <div class="user">
+            {{next.author_username}}
+        </div>
+        {% if next.level == 1 %}
+            <em>Top-level post</em>
+        {% elif next.level == 2 %}
+            <em>Main reply</em>
+        {% endif %}
+        <br><br>
+        {{next.body.decode(encoding='UTF-8', errors='ignore')}}
+    </div>
+
+    {% if comments %}
+    <div class="commentbox">
+        <h3>Your previous code on this post:</h3>
+        <ul>
+            {% for comment in comments %}
+                <li>
+                    <em>{{comment.code_value}}</em>{% if comment.comment %}: {{comment.comment}}{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>

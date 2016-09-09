@@ -1,0 +1,36 @@
+<div class="codebox">
+    <div style="float: left; width: 22%">
+        <h3>Where is this comment directed?</h3>
+            <select name=codevalue>
+                <option value="blank" selected="selected"></option>
+                <option value="top">top-level post</option>
+                {% if next.level >= 3 %}
+                    <option value="reply">main reply</option>
+                {% endif %}
+                {% if next.level == 4 %}
+                    <option value="commenters">other commenters</option>
+                    <option value="everyone">everyone else</option>
+                {% endif %}
+                <option value="yes">short yes</option>
+                <option value="vague">no clear target</option>
+                <option value="off">off-topic</option>
+            </select>
+    </div>
+    <div style="float: left; width: 22%">
+        <h3>Additional comments:</h3>
+            <textarea form="codeform" name="comment"></textarea>
+            <input type="hidden" value="{{next.mongoid}}" name="postid">
+            <br>
+    </div>
+    <div style="float: left; width: 22%">
+            <br><br>
+            <center>
+            <input type="submit" value="Record code" name="code">
+            <br><br>
+            {% if comments %}
+                <input type="submit" value="Next post" name="next">
+            {% endif %}
+            <input type="submit" value="Previous post" name="prev">
+            </center>
+    </div>
+</div>
