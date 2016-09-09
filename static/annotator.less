@@ -24,7 +24,7 @@ body {
 
 .post {
     width: 66%;
-    margin: 5px;
+    margin: 1px;
     padding: 5px;
     height: auto;
 
@@ -35,7 +35,6 @@ body {
 
 .commentbox {
     width: 500px;
-    margin: 5px;
     padding: 5px;
     height: auto;
 
@@ -66,6 +65,23 @@ h2, h3, h4, h5, h6 {
     font-size: 16px;
     font-weight: bold;
 }
+
+ul {
+    padding-left: 1%;
+    list-style-type: none;
+}
+
+
+// Indent for thread display
+
+.generate-indents(@n, @i: 1) when (@i =< @n) {
+    li[indent="@{i}"] {
+        margin-left: @i * 1%;
+    }
+    .generate-indents(@n, (@i+1))
+}
+
+.generate-indents(4);
 
 
 // Forms

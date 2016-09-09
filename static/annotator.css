@@ -15,7 +15,7 @@ body {
 }
 .post {
   width: 66%;
-  margin: 5px;
+  margin: 1px;
   padding: 5px;
   height: auto;
   border-style: dashed;
@@ -26,7 +26,6 @@ body {
 }
 .commentbox {
   width: 500px;
-  margin: 5px;
   padding: 5px;
   height: auto;
   border-style: dashed;
@@ -40,6 +39,7 @@ body {
 }
 .codebox {
   margin-left: 2%;
+  width: 66%;
 }
 h2 {
   text-align: center;
@@ -59,6 +59,22 @@ h6 {
 .user {
   font-size: 16px;
   font-weight: bold;
+}
+ul {
+  padding-left: 1%;
+  list-style-type: none;
+}
+li[indent="1"] {
+  margin-left: 1%;
+}
+li[indent="2"] {
+  margin-left: 2%;
+}
+li[indent="3"] {
+  margin-left: 3%;
+}
+li[indent="4"] {
+  margin-left: 4%;
 }
 input[type=submit] {
   font-family: 'Helvetica Neue';
