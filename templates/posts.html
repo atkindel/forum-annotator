@@ -4,8 +4,8 @@
     <h2>{{titleof(threadid)}}</h2>
 
     {% include "posts/display_thread.html" %}
-    {% include "posts/code_post.html" %}
-    {% include "posts/code_submit.html" %}
+    {% include "posts/display_nextpost.html" %}
+    {% include "codetype/{{codetype}}.html" %}
 
     <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
 {% endblock %}

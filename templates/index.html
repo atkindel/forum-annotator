@@ -5,16 +5,19 @@
     <ul>
     {% if g.user %}
         {% if g.user['superuser'] %}
-        <li><em>Administration</em></li>
+        <li><h3>Administration</h3></li>
         <ul>
             <li><a href="{{ url_for('admin') }}">Register users</a></li>
             <li><a href="{{ url_for('assign') }}">Assign users to threads</a></li>
             <li><a href="{{ url_for('tables', tablename='codes')}}">View DB tables</a></li>
         </ul>
         {% endif %}
-        <li><a href="{{ url_for('userpage', username=g.user['username']) }}">View assigned threads</a></li>
-        <li><a href="{{ url_for('annotate') }}">Annotate forum posts</a></li>
-        <li><a href="{{ url_for('logout') }}">Log out</a></li>
+        <li><h3>Annotation</h3></li>
+        <ul>
+            <li><a href="{{ url_for('userpage', username=g.user['username']) }}">View assigned threads</a></li>
+            <li><a href="{{ url_for('annotate') }}">Annotate forum posts</a></li>
+            <li><a href="{{ url_for('logout') }}">Log out</a></li>
+        </ul>
     {% else %}
         <li><a href="{{ url_for('login') }}">Log in</a></li>
     {% endif %}
