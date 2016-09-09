@@ -13,7 +13,7 @@ import os
 
 from flask import Flask, g, render_template, request, url_for, redirect, session, flash
 from werkzeug import generate_password_hash, check_password_hash
-from dbutils import with_db, query
+from dbutils import with_db, query, dev_only
 
 
 # Configuration
@@ -39,6 +39,8 @@ def to_epoch(timestamp):
 
 
 # Database procedures
+
+# TODO: Since we're on MySQL, consider using these as stored functions/procedures
 
 @with_db(dbms)
 def total_posts(db, thread_id):
@@ -69,11 +71,10 @@ def log():
 # Database management
 
 @application.cli.command('build')
+@dev_only
 def build_db():
     '''Rebuild MySQL tables for development.'''
-    # XXX: Don't use this in production
-    if DEV_INSTANCE:
-        subprocess.call("mysql -h %s -P %d -D %s -u %s -p%s < ./sql/schema.sql" % (dbms['host'], dbms['port'], dbms['name'], dbms['username'], dbms['password']), shell=True)
+    subprocess.call("mysql -h %s -P %d -D %s -u %s -p%s < ./sql/schema.sql" % (dbms['host'], dbms['port'], dbms['name'], dbms['username'], dbms['password']), shell=True)
 
 
 @application.cli.command('load')
@@ -133,7 +134,6 @@ def set_user(db):
             g.user = query(db, "SELECT id, username, first_name, last_name, superuser FROM users WHERE id = %s" % session['user_id']).next()
 
 
-
 @application.route('/login', methods=['GET', 'POST'])
 @with_db(dbms)
 def login(db):
@@ -171,6 +171,7 @@ def userpage(db, username):
     return render_template('user.html', username=username, assignments=assignments)
 
 @application.route('/admin', methods=['GET', 'POST'])
+@superuser_required
 @with_db(dbms)
 def admin(db):
     '''Logic for user admin page'''
@@ -211,6 +212,7 @@ def done_processor(db):
 
 
 @application.route('/assign', methods=['GET', 'POST'])
+@superuser_required
 @with_db(dbms)
 def assign(db):
     '''Logic for thread assigner'''
@@ -236,6 +238,8 @@ def tables(db, tablename, limit='100'):
     table = query(db, "SELECT * FROM %s LIMIT %s" % (tablename, limit), fetchall=True)
     header = table[0].keys()
     return render_template('tables.html', tablename=tablename, table=table, header=header)
+
+# TODO: Inter-coder reliability view
 
 
 # Annotator user views
@@ -296,7 +300,6 @@ def goto_post(db, userid, threadid, rel_idx):
 
 @application.context_processor
 def titleof_processor():
-        # should this be specific to code_type? -MY
     '''Template utility function: get thread title from threadid'''
     def titleof(thread_id):
         return title_of_thread(thread_id)
@@ -315,12 +318,14 @@ def annotate(db):
         return redirect(url_for('annotate_thread', threadid=threadid))
     return render_template('annotate.html', assigned=assigned)
 
+# TODO: Generalize the below to multiple coding tasks
+
 @application.route('/annotate/<threadid>', methods=['GET', 'POST'])
 @login_required
 @with_db(dbms)
 def annotate_thread(db, threadid):
     userid = g.user['id']
-    code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
+    code_type = "replymap"
     comments = None
     msg = None
     if request.method == 'POST':
