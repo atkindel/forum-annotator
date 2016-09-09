@@ -7,10 +7,12 @@
         </div>
         {% if next.level == 1 %}
             <em>Top-level post</em>
+            <br>
         {% elif next.level == 2 %}
             <em>Main reply</em>
+            <br>
         {% endif %}
-        <br><br>
+        <br>
         {{next.body.decode(encoding='UTF-8', errors='ignore')}}
     </div>
 

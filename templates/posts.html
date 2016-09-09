@@ -3,17 +3,9 @@
 {% block body %}
     <h2>{{titleof(threadid)}}</h2>
 
-    <!-- TODO: What variables does this template receive? -->
-
-    <form action="{{ url_for('annotate_thread', threadid=threadid) }}" id="codeform" method="POST">
-
     {% include "posts/display_thread.html" %}
-
     {% include "posts/code_post.html" %}
-
     {% include "posts/code_submit.html" %}
-
-    </form>
 
     <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
 {% endblock %}
