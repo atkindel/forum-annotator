@@ -21,4 +21,12 @@
         </tr>
         {% endfor %}
     </table>
+
+    <h3>View other tables...</h3>
+    <ul>
+        <li><a href="{{ url_for('tables', tablename='codes')}}">View user codes</a></li>
+        <li><a href="{{ url_for('tables', tablename='threads')}}">View forum threads</a></li>
+        <li><a href="{{ url_for('tables', tablename='assignments')}}">View coding assignments</a></li>
+        <li><a href="{{ url_for('tables', tablename='users')}}">View user accounts</a></li>
+    </ul>
 {% endblock %}

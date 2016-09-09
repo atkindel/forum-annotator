@@ -9,6 +9,7 @@
         <ul>
             <li><a href="{{ url_for('admin') }}">Register users</a></li>
             <li><a href="{{ url_for('assign') }}">Assign users to threads</a></li>
+            <li><a href="{{ url_for('tables', tablename='codes')}}">View DB tables</a></li>
         </ul>
         {% endif %}
         <li><a href="{{ url_for('userpage', username=g.user['username']) }}">View assigned threads</a></li>
