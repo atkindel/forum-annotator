@@ -1,19 +1,13 @@
 <div class="codebox">
     <form action="{{ url_for('annotate_thread', assignmentid=assignmentid) }}" id="codeform" method="POST">
-        <h3>Where is this comment directed?</h3>
+        <h3>Is this post expressing positive or negative sentiment?</h3>
         <select name=codevalue>
             <option value="blank" selected="selected"></option>
-            <option value="top">top-level post</option>
-            {% if next.level >= 3 %}
-                <option value="reply">main reply</option>
-            {% endif %}
-            {% if next.level == 4 %}
-                <option value="commenters">other commenters</option>
-                <option value="everyone">everyone else</option>
-            {% endif %}
-            <option value="yes">short yes</option>
-            <option value="vague">no clear target</option>
-            <option value="off">off-topic</option>
+            <option value="5">Very positive</option>
+            <option value="4">Somewhat positive</option>
+            <option value="3">Neither positive nor negative</option>
+            <option value="2">Somewhat negative</option>
+            <option value="1">Very negative</option>
         </select>
 
         <h3>Additional comments:</h3>

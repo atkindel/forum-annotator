@@ -3,9 +3,10 @@
 {% block body %}
     <h2>Annotate threads</h2>
     <form action="{{ url_for('annotate') }}" method="POST">
-        <select class="assigned" name="thread">
+        <h3>Which coding assignment?</h3>
+        <select class="assigned" name="assn">
         {% for assn in assigned %}
-            <option value="{{assn.thread_id}}">{{assn.title}}</option>
+            <option value="{{assn.assn_id}}">[{{assn.code_type}}]: {{assn.title}}</option>
         {% endfor %}
         </select>
         <input type="submit" value="Select thread">

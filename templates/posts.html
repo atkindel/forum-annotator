@@ -5,7 +5,7 @@
 
     {% include "posts/display_thread.html" %}
     {% include "posts/display_nextpost.html" %}
-    {% include "codetype/{{codetype}}.html" %}
+    {% include "codetype/%s.html" % codetype %}
 
     <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
 {% endblock %}

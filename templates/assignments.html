@@ -1,8 +1,8 @@
 {% extends "annotator.html" %}
 {% block title %}Assign{% endblock %}
 {% block body %}
-    <h2>Assign threads</h2>
-    <form action="{{ url_for('assign') }}" method="POST">
+    <h2>Assign threads to task: {{code_type}}</h2>
+    <form action="{{ url_for('assign', code_type=code_type) }}" method="POST">
         <table class="threads users" border=1> <!-- Does the class need to be set to the variable name for binding, or is this stylistic?-->
             <tr>
                 <td><center><b>Thread</b></center></td>
@@ -14,10 +14,10 @@
             <tr>
                 <td>{{ thread.title }}</td>
                 {% for user in users %}
-                    {% if not assigned(thread.mongoid, user.id) %}
+                    {% if not assigned(thread.mongoid, user.id, code_type) %}
                     <td><center><input type="checkbox" name="{{ {'thread':thread.mongoid, 'user':user.id} }}"></center></td>
                     {% else %}
-                    <td><center>{{ done(thread.mongoid, user.id) }}</center></td>
+                    <td><center>{{ done(thread.mongoid, user.id, code_type) }}</center></td>
                     {% endif %}
                 {% endfor %}
             </tr>

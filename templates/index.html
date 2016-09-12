@@ -8,8 +8,9 @@
         <li><h3>Administration</h3></li>
         <ul>
             <li><a href="{{ url_for('admin') }}">Register users</a></li>
-            <li><a href="{{ url_for('assign') }}">Assign users to threads</a></li>
-            <li><a href="{{ url_for('tables', tablename='codes')}}">View DB tables</a></li>
+            <li><a href="{{ url_for('assign', code_type='replymap') }}">Assign users to reply mapping task</a></li>
+            <li><a href="{{ url_for('assign', code_type='sentiment') }}">Assign users to sentiment tagging task</a></li>
+            <li><a href="{{ url_for('tables', tablename='codes') }}">View DB tables</a></li>
         </ul>
         {% endif %}
         <li><h3>Annotation</h3></li>

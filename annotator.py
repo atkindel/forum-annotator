@@ -40,23 +40,21 @@ def to_epoch(timestamp):
 
 # Database procedures
 
-# TODO: Since we're on MySQL, consider using these as stored functions/procedures
-
 @with_db(dbms)
 def total_posts(db, thread_id):
-    return query(db, "SELECT count(*) FROM threads WHERE comment_thread_id = '%s'" % thread_id).next().values()[0] + 1
+    return query(db, "SELECT total_posts('%s')" % thread_id).next().values()[0]
 
 @with_db(dbms)
-def done_posts(db, user_id, thread_id):
-    return query(db, "SELECT done FROM assignments WHERE user_id = %d AND thread_id = '%s'" % (user_id, thread_id)).next().values()[0]
+def done_posts(db, assignmentid):
+    return query(db, "SELECT done_posts('%s')" % assignmentid).next().values()[0]
 
 @with_db(dbms)
-def set_finished(db, user_id, thread_id):
-    query(db, "UPDATE assignments SET finished = 1 WHERE thread_id = '%s' and user_id = %d" % (thread_id, user_id))
+def set_finished(db, assignmentid):
+    query(db, "CALL set_finished('%s')" % assignmentid)
 
 @with_db(dbms)
 def title_of_thread(db, thread_id):
-    return query(db, "SELECT title FROM threads WHERE mongoid = '%s'" % thread_id, fetchall=True)[0]['title']
+    return query(db, "SELECT thread_title('%s')" % thread_id).next().values()[0]
 
 
 # Clickstream logging
@@ -187,47 +185,45 @@ def admin(db):
 # Annotator administration
 
 @with_db(dbms)
-def assigned(db, thread_id, user_id):
-    assns = query(db, "SELECT 1 FROM assignments WHERE thread_id = '%s' AND user_id = %d" % (thread_id, int(user_id)), fetchall=True)
+def assigned(db, thread_id, user_id, code_type):
+    assns = query(db, "SELECT 1 FROM assignments WHERE thread_id = '%s' AND user_id = %d AND code_type = '%s'" % (thread_id, int(user_id), code_type), fetchall=True)
     return bool(assns)
 
 @application.context_processor
 def assignment_processor():
-        # should this be specific to code_type? -MY
     '''Template utility function: is thread_id assigned to user_id?'''
-    def fn(thread_id, user_id):
-        return assigned(thread_id, user_id)
+    def fn(thread_id, user_id, code_type):
+        return assigned(thread_id, user_id, code_type)
     return dict(assigned=fn)
 
 @application.context_processor
-@with_db(dbms)
-def done_processor(db):
-        # should this be specific to code_type? -MY
+def done_processor():
     '''Template utility function: how many posts in thread X has user Y coded?'''
-    def done(thread_id, user_id):
-        ct = done_posts(user_id, thread_id)
+    @with_db(dbms)
+    def done(db, thread_id, user_id, code_type):
+        assn_id = query(db, "SELECT assn_id FROM assignments WHERE thread_id = '%s' AND user_id = %d AND code_type = '%s'" % (thread_id, int(user_id), code_type)).next().values()[0]
+        ct = done_posts(assn_id)
         total = total_posts(thread_id)
         return "%d/%d" % (ct, total)
     return dict(done=done)
 
 
-@application.route('/assign', methods=['GET', 'POST'])
+@application.route('/assign/<code_type>', methods=['GET', 'POST'])
 @superuser_required
 @with_db(dbms)
-def assign(db):
+def assign(db, code_type):
     '''Logic for thread assigner'''
     threads = query(db, "SELECT mongoid, title FROM threads WHERE level = 1", fetchall=True)
     users = query(db, "SELECT id, first_name, last_name FROM users ORDER BY id", fetchall=True)
-    code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
     if request.method == 'POST':
         for key in request.form.keys():
             ids = eval(key)
             value = request.form[key]
             thread = ids['thread']
             user = ids['user']
-            if value == 'on' and not assigned(thread, user):
+            if value == 'on' and not assigned(thread, user, code_type):
                 query(db, "INSERT INTO assignments(thread_id, user_id, code_type, next_post, finished) VALUES ('%s','%s','%s','%s','%s')" % (thread, user, code_type, thread, 0))
-    return render_template('assignments.html', users=users, threads=threads)
+    return render_template('assignments.html', users=users, threads=threads, code_type=code_type)
 
 @application.route('/tables/<tablename>/<limit>')
 @application.route('/tables/<tablename>')
@@ -284,18 +280,17 @@ def fetch_posts(db, threadid, next_post_id):
                 history.append(post)
 
 @with_db(dbms)
-def goto_post(db, userid, threadid, rel_idx):
+def goto_post(db, assignmentid, threadid, rel_idx):
     '''Given a relative index, move persistent pointer to post on deck accordingly.'''
-    post_idx = done_posts(userid, threadid) + rel_idx
+    post_idx = done_posts(assignmentid) + rel_idx
     if post_idx < 0:
         return "Earliest post."
     elif post_idx >= total_posts(threadid):
-        set_finished(userid, threadid)
+        set_finished(assignmentid)
         return "Last post. This thread is finished!"
     thread = get_thread(threadid)
     post_id = thread[post_idx]['mongoid']
-    code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
-    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE thread_id = '%s' AND user_id = %d AND code_type = '%s' " % (rel_idx, post_id, threadid, userid, code_type))
+    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE assn_id = '%s'" % (rel_idx, post_id, assignmentid))
     return None
 
 @application.context_processor
@@ -312,27 +307,29 @@ def titleof_processor():
 def annotate(db):
     '''Logic for user annotation of forum posts.'''
     userid = g.user['id']
-    assigned = query(db, "SELECT a.thread_id, t.title, a.next_post FROM assignments a JOIN threads t ON thread_id = mongoid WHERE user_id = %d" % userid, fetchall=True)
+    assigned = query(db, "SELECT a.assn_id, a.code_type, t.title FROM assignments a JOIN threads t ON a.thread_id = t.mongoid WHERE user_id = %d" % userid, fetchall=True)
     if request.method == 'POST':
-        threadid = request.form['thread']
-        return redirect(url_for('annotate_thread', threadid=threadid))
+        assn_id = request.form['assn']
+        return redirect(url_for('annotate_thread', assignmentid=assn_id))
     return render_template('annotate.html', assigned=assigned)
 
 # TODO: Generalize the below to multiple coding tasks
 
-@application.route('/annotate/<threadid>', methods=['GET', 'POST'])
+@application.route('/annotate/<assignmentid>', methods=['GET', 'POST'])
 @login_required
 @with_db(dbms)
-def annotate_thread(db, threadid):
+def annotate_thread(db, assignmentid):
     userid = g.user['id']
-    code_type = "replymap"
+    id_vals = query(db, "SELECT code_type, thread_id FROM assignments WHERE assn_id = %d" % int(assignmentid)).next()
+    code_type = id_vals['code_type']
+    threadid = id_vals['thread_id']
     comments = None
     msg = None
     if request.method == 'POST':
         if 'next' in request.form.keys():
-            msg = goto_post(userid, threadid, 1)
+            msg = goto_post(assignmentid, threadid, 1)
         elif 'prev' in request.form.keys():
-            msg = goto_post(userid, threadid, -1)
+            msg = goto_post(assignmentid, threadid, -1)
         elif 'code' in request.form.keys():
             code_value = request.form['codevalue']
             if code_value == "blank":
@@ -344,7 +341,6 @@ def annotate_thread(db, threadid):
                 if code_value == 'commenters':
                     comment_ids = [request.form[k] for k in request.form.keys() if 'target' in k]
                     targets = '||'.join(comment_ids)
-                code_type = "replymap"  # Hard-coded, but should be generalized for other coder tasks
                 try:
                     existing = query(db, "SELECT code_id FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid)).next()['code_id']
                 except StopIteration:
@@ -365,13 +361,13 @@ def annotate_thread(db, threadid):
                         query(db, "UPDATE codes SET code_value = '%s', comment = '%s' WHERE code_id = %d" % (code_value, comment, existing))
                 finally:
                     if not msg:
-                        msg = goto_post(userid, threadid, 1)
+                        msg = goto_post(assignmentid, threadid, 1)
         if msg:
             flash(msg)
     next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]
     comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d AND code_type = '%s'" % (next_post_id, userid, code_type), fetchall=True)
     posts, next_post = fetch_posts(threadid, next_post_id)
-    return render_template('posts.html', threadid=threadid, posts=posts, next=next_post, comments=comments)
+    return render_template('posts.html', assignmentid=assignmentid, threadid=threadid, posts=posts, next=next_post, comments=comments, codetype=code_type)
 
 
 # Main page

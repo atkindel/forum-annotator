@@ -4,7 +4,7 @@
     <h2>{{username}}</h2>
     <ul class="assignments">
     {% for assn in assignments %}
-        <li>[{{loop.index}}] <a href="{{ url_for('annotate_thread', threadid=assn.thread_id) }}">{{ assn.thread_id }} ({{ done(assn.thread_id, assn.user_id)}})</a></li>
+        <li>[{{loop.index}}] <a href="{{ url_for('annotate_thread', assignmentid=assn.assn_id) }}">{{ assn.thread_id }} ({{ done(assn.thread_id, assn.user_id, assn.code_type)}})</a></li>
     {% endfor %}
     </ul>
 {% endblock %}
