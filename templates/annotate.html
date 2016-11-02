@@ -6,7 +6,7 @@
         <h3>Which coding assignment?</h3>
         <select class="assigned" name="assn">
         {% for assn in assigned %}
-            <option value="{{assn.assn_id}}">[{{assn.code_type}}]: {{assn.title}}</option>
+            <option value="{{assn.assn_id}}">[{{assn.label}}]: {{titleof(assn.thread_id)}}</option>
         {% endfor %}
         </select>
         <input type="submit" value="Select thread">

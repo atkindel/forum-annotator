@@ -1,0 +1,80 @@
+{% extends "annotator.html" %}
+{% block title %}Tasks{% endblock %}
+{% block body %}
+    <h2>Tasks</h2>
+    <ul class="tasks">
+        {% for task in tasks %}
+        <li>
+            [{{ task.label }}]: <em>{{ task.title }}</em>
+            <br>&emsp;
+            <a href="{{ url_for('preview_task', task_id=task.task_id) }}">Preview task</a> |
+            <a href="{{ url_for('assign_task', task_id=task.task_id) }}">Assign task</a>
+        </li><br>
+        {% else %}
+        <em>No tasks yet.</em>
+        {% endfor %}
+    </ul>
+    <br>
+    <h2>Create a new task</h2>
+    <form action="{{ url_for('tasks') }}" id="taskform" method="POST">
+        <table>
+            <tr>
+                <td>Task title</td>
+                <td><input type="text" name="title"></td>
+            </tr>
+
+            <tr>
+                <td>Task short label</td>
+                <td><input type="text" name="label"></td>
+            </tr>
+
+            <tr>
+                <td>Data display type</td>
+                <td>
+                    <select name="display">
+                        <option value="cumthread">Basic forum thread (cumulative)</option>
+                        <option value="seqthread">Basic forum thread (sequential)</option>
+                        <option value="replymap">Reply mapping forum thread</option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr>
+                <td>Prompt text</td>
+                <td><input type="text" name="prompt"></td>
+            </tr>
+
+            <tr>
+                <td>Task type</td>
+                <td>
+                    <select name="type">
+                        <option value="multilist">Multiple choices list</option>
+                        <option value="singlelist">Single choice list</option>
+                        <option value="dropdown">Single choice dropdown</option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr>
+                <td>Task options <br> (one per line)</td>
+                <td><textarea form="taskform" name="options"></textarea>
+            </tr>
+
+            <tr>
+                <td>Allow comments?</td>
+                <td><input type="checkbox" name="allow_comments"></td>
+            </tr>
+
+            <tr>
+                <td>Enable navigation?</td>
+                <td><input type="checkbox" name="allow_navigation"></td>
+            </tr>
+
+            <tr><td>&emsp;</td></tr>
+
+            <tr>
+                <td><input type="submit" value="Add task"></td>
+            </tr>
+        </table>
+    </form>
+{% endblock %}

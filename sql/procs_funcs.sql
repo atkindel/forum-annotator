@@ -4,11 +4,11 @@ DELIMITER //
 
 -- Total number of posts in a thread --
 DROP FUNCTION IF EXISTS total_posts//
-CREATE FUNCTION total_posts (thread_id TEXT)
+CREATE FUNCTION total_posts (in_thread_id TEXT)
 RETURNS INT
 DETERMINISTIC
 BEGIN
-    SELECT count(*) INTO @posts_count FROM threads WHERE `comment_thread_id` = thread_id;
+    SELECT comment_count INTO @posts_count FROM threads WHERE `thread_id` = in_thread_id;
     RETURN @posts_count;
 END//
 
@@ -24,13 +24,13 @@ END//
 
 -- Get title of thread --
 DROP FUNCTION IF EXISTS thread_title//
-CREATE FUNCTION thread_title (thread_id TEXT)
+CREATE FUNCTION thread_title (in_thread_id TEXT)
 RETURNS TEXT
 DETERMINISTIC
 BEGIN
     SELECT title INTO @title_text
     FROM threads
-    WHERE `mongoid` = thread_id;
+    WHERE `thread_id` = in_thread_id;
     RETURN @title_text;
 END//
 

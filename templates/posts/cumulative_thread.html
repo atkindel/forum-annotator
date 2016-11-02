@@ -1,9 +1,9 @@
 <ul>
-{% for post in posts %}
+{% for post in prev %}
     <li class="post" indent="{{post.level}}">
         <div class="user">
             {{post.author_username}}
-            {% if next.level == 4 %}
+            {% if next.level == 4 and task.display == "replymap" %}
                 <input type="checkbox" form="codeform" name="target_{{post.mongoid}}" value="{{post.mongoid}}">
             {% endif %}
         </div>
@@ -19,3 +19,22 @@
     </li>
 {% endfor %}
 </ul>
+
+<div id="annotatethread">
+    <div class="post">
+        <u>Now coding:</u>
+        <br>
+        <div class="user">
+            {{next.author_username}}
+        </div>
+        {% if next.level == 1 %}
+            <em>Top-level post</em>
+            <br>
+        {% elif next.level == 2 %}
+            <em>Main reply</em>
+            <br>
+        {% endif %}
+        <br>
+        {{next.body.decode(encoding='UTF-8', errors='ignore')}}
+    </div>
+</div>

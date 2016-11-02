@@ -1,0 +1,37 @@
+{% extends "annotator.html" %}
+{% block title %}Projects{% endblock %}
+{% block body %}
+    <h2>Projects</h2>
+    <em>(click to add assignments)</em>
+    <ul class="projects">
+        {% for project in projects %}
+        <li>
+            [{{ project.proj_id }}]: <a href="{{ url_for('assign', proj_id=project.proj_id) }}">{{ project.title }}</a>
+        </li>
+        {% else %}
+        <em>No projects yet.</em>
+        {% endfor %}
+    </ul>
+    <br>
+    <h2>Create a new project</h2>
+    <form action="{{ url_for('projects') }}" method="POST">
+        <table>
+            <tr>
+                <td>Title</td>
+                <td><input type="text" name="title"></td>
+            </tr>
+            <tr>
+                <td>Task</td>
+                <td>
+                    <select name="task">
+                        {% for task in tasks %}
+                            <option value={{task.task_id}}>[{{task.label}}]: {{task.title}}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+            <tr>
+                <td><input type="submit" value="Add project"></td>
+            </tr>
+        </table>
+    </form>
+{% endblock %}

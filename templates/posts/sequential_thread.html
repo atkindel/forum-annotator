@@ -15,17 +15,4 @@
         <br>
         {{next.body.decode(encoding='UTF-8', errors='ignore')}}
     </div>
-
-    {% if comments %}
-    <div class="commentbox">
-        <h3>Your previous code on this post:</h3>
-        <ul>
-            {% for comment in comments %}
-                <li>
-                    <em>{{comment.code_value}}</em>{% if comment.comment %}: {{comment.comment}}{% endif %}
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
 </div>
