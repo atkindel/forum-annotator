@@ -32,6 +32,90 @@ dbms = {'username': os.environ['DB_USER'],
 application.config.from_object(__name__)
 
 
+# User session management
+
+def login_required(f):
+    '''Require logged-in user to access.'''
+    @wraps(f)
+    def login_req_fn(*args, **kwargs):
+        if not g.user:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return login_req_fn
+
+def superuser_required(f):
+    '''Required logged-in superuser to access.'''
+    @wraps(f)
+    def su_req_fn(*args, **kwargs):
+        if not g.user:
+            return redirect(url_for('login'))
+        if not g.user['superuser']:
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return su_req_fn
+
+@application.before_request
+@with_db(dbms)
+def set_user(db):
+    '''Attach user information to HTTP requests.'''
+    g.user = None
+    if 'user_id' in session:
+        try:
+            g.user = query(db, "SELECT id, username, first_name, last_name, superuser FROM users WHERE id = %s" % session['user_id']).next()
+        except StopIteration:
+            session.clear()
+            g.user = query(db, "SELECT id, username, first_name, last_name, superuser FROM users WHERE id = %s" % session['user_id']).next()
+
+@application.route('/login', methods=['GET', 'POST'])
+@with_db(dbms)
+def login(db):
+    '''Log in as user.'''
+    if g.user:
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        user = None
+        try:
+            user = query(db, "SELECT id, pass_hash FROM users WHERE username = '%s'" % request.form['username']).next()
+        except StopIteration:
+            pass
+        if not user:
+            flash("Invalid username.")
+        elif not check_password_hash(user['pass_hash'], request.form['password']):
+            flash("Invalid password.")
+        else:
+            session['user_id'] = user['id']
+            return redirect(url_for('index'))
+    return render_template('login.html')
+
+@application.route('/logout')
+def logout():
+    '''Logout active user.'''
+    session.pop('user_id', None)
+    return redirect(url_for('index'))
+
+@application.route('/<username>')
+@login_required
+@with_db(dbms)
+def userpage(db, username):
+    '''Show assignment information for this user.'''
+    user_id = g.user['id']
+    assignments = query(db, "SELECT a.user_id, a.task_id, a.thread_id, t.label FROM assignments a JOIN tasks t ON a.task_id = t.task_id WHERE user_id = %d" % user_id, fetchall=True)
+    return render_template('user.html', username=username, assignments=assignments)
+
+@application.route('/admin', methods=['GET', 'POST'])
+@superuser_required
+@with_db(dbms)
+def admin(db):
+    '''Logic for user admin page'''
+    if request.method == 'POST':
+        su = int(request.form.get('superuser') == 'on')
+        query(db, "INSERT INTO users(username, first_name, last_name, email, pass_hash, superuser) VALUES ('%s','%s','%s','%s','%s','%s')" %
+                  (request.form['username'], request.form['first_name'], request.form['last_name'], request.form['email'], generate_password_hash(request.form['password']), su))
+        return redirect(url_for('admin'))
+    users = query(db, 'select id, username, first_name, last_name, superuser from users', fetchall=True)
+    return render_template('admin.html', users=users)
+
+
 # Database funcs/procs interface
 
 @with_db(dbms)
@@ -146,90 +230,6 @@ def tables(db, tablename, limit='100'):
     table = query(db, "SELECT * FROM %s LIMIT %s" % (tablename, limit), fetchall=True)
     header = table[0].keys()
     return render_template('tables.html', tablename=tablename, table=table, header=header)
-
-
-# User session management
-
-def login_required(f):
-    '''Require logged-in user to access.'''
-    @wraps(f)
-    def login_req_fn(*args, **kwargs):
-        if not g.user:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return login_req_fn
-
-def superuser_required(f):
-    '''Required logged-in superuser to access.'''
-    @wraps(f)
-    def su_req_fn(*args, **kwargs):
-        if not g.user:
-            return redirect(url_for('login'))
-        if not g.user['superuser']:
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return su_req_fn
-
-@application.before_request
-@with_db(dbms)
-def set_user(db):
-    '''Attach user information to HTTP requests.'''
-    g.user = None
-    if 'user_id' in session:
-        try:
-            g.user = query(db, "SELECT id, username, first_name, last_name, superuser FROM users WHERE id = %s" % session['user_id']).next()
-        except StopIteration:
-            session.clear()
-            g.user = query(db, "SELECT id, username, first_name, last_name, superuser FROM users WHERE id = %s" % session['user_id']).next()
-
-@application.route('/login', methods=['GET', 'POST'])
-@with_db(dbms)
-def login(db):
-    '''Log in as user.'''
-    if g.user:
-        return redirect(url_for('index'))
-    if request.method == 'POST':
-        user = None
-        try:
-            user = query(db, "SELECT id, pass_hash FROM users WHERE username = '%s'" % request.form['username']).next()
-        except StopIteration:
-            pass
-        if not user:
-            flash("Invalid username.")
-        elif not check_password_hash(user['pass_hash'], request.form['password']):
-            flash("Invalid password.")
-        else:
-            session['user_id'] = user['id']
-            return redirect(url_for('index'))
-    return render_template('login.html')
-
-@application.route('/logout')
-def logout():
-    '''Logout active user.'''
-    session.pop('user_id', None)
-    return redirect(url_for('index'))
-
-@application.route('/<username>')
-@login_required
-@with_db(dbms)
-def userpage(db, username):
-    '''Show assignment information for this user.'''
-    user_id = g.user['id']
-    assignments = query(db, "SELECT a.user_id, a.task_id, a.thread_id, t.label FROM assignments a JOIN tasks t ON a.task_id = t.task_id WHERE user_id = %d" % user_id, fetchall=True)
-    return render_template('user.html', username=username, assignments=assignments)
-
-@application.route('/admin', methods=['GET', 'POST'])
-@superuser_required
-@with_db(dbms)
-def admin(db):
-    '''Logic for user admin page'''
-    if request.method == 'POST':
-        su = int(request.form.get('superuser') == 'on')
-        query(db, "INSERT INTO users(username, first_name, last_name, email, pass_hash, superuser) VALUES ('%s','%s','%s','%s','%s','%s')" %
-                  (request.form['username'], request.form['first_name'], request.form['last_name'], request.form['email'], generate_password_hash(request.form['password']), su))
-        return redirect(url_for('admin'))
-    users = query(db, 'select id, username, first_name, last_name, superuser from users', fetchall=True)
-    return render_template('admin.html', users=users)
 
 
 # Template context managers
