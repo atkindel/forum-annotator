@@ -55,8 +55,7 @@ CREATE TABLE `tasks` (
     type TEXT NOT NULL,
     options TEXT NOT NULL,
     restrictions TEXT NOT NULL,
-    allow_comments BOOLEAN NOT NULL,
-    allow_navigation BOOLEAN NOT NULL
+    allow_comments BOOLEAN NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `assignments`;

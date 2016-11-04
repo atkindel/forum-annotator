@@ -274,7 +274,6 @@ def titleof_processor():
 def tasks(db):
     if request.method == 'POST':
         # Get task options and parameters
-        nav = int(request.form.get('allow_navigation') == 'on')
         cmnts = int(request.form.get('allow_comments') == 'on')
         opts_data = request.form.get('options').split('\r\n')
         opts = list()
@@ -290,8 +289,8 @@ def tasks(db):
         restr = '||'.join(restr)
 
         # Record task data
-        query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, restrictions, allow_comments, allow_navigation) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
-              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, restr, cmnts, nav))
+        query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, restrictions, allow_comments) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s')" %
+              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, restr, cmnts))
         return redirect(url_for('tasks'))
     tasks = query(db, "SELECT * FROM tasks", fetchall=True)
     return render_template("tasks.html", tasks=tasks)
