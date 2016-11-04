@@ -374,15 +374,23 @@ def diagnostics(db, task_id):
         for ui in users:
             for uj in users:
                 ui_codes = code_data[(ui['id'], thread['thread_id'])]
+                ui_targs = target_data[(ui['id'], thread['thread_id'])]
                 uj_codes = code_data[(uj['id'], thread['thread_id'])]
+                uj_targs = target_data[(uj['id'], thread['thread_id'])]
                 length = min(len(ui_codes), len(uj_codes))
+
+                # Truncate lists to minimum length
+                ui_codes = ui_codes[:length]
+                ui_targs = ui_targs[:length]
+                uj_codes = uj_codes[:length]
+                uj_targs = uj_targs[:length]
 
                 # Compute concordance per item
                 conc = 0
                 for i, x in enumerate(ui_codes):
                     if x == uj_codes[i] == "commenters":
                         # Targets must agree where applicable, otherwise disagree
-                        conc += (target_data[(ui['id'], thread['thread_id'])][i] == target_data[(uj['id'], thread['thread_id'])][i])
+                        conc += (ui_targs[i] == uj_targs[i])
                     else:
                         conc += (x == uj_codes[i])
 
