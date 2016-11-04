@@ -1,0 +1,57 @@
+{% extends "annotator.html" %}
+{% block title %}{{task.label}}{% endblock %}
+{% block body %}
+    <h2>{{ titleof(thread_id) }}</h2>
+
+    {% if task.display in ["cumthread", "replymap"] %}
+        {% include "posts/cumulative_thread.html" %}
+    {% elif task.display in ["seqthread"] %}
+        {% include "posts/sequential_thread.html" %}
+    {% endif %}
+
+    <div class="task">
+        <form id="codeform" action="{{ url_for('annotate_thread', assn_id=assn_id) }}" method="POST">
+            <h3>{{ task.prompt }}</h3>
+
+            <input type="hidden" value="{{next.post_id}}" name="post_id">
+
+            {% if task.type == "multilist" %}
+                <ul>
+                {% for opt in task.options.split('||') %}
+                    <li><input type="checkbox" value={{opt}} name="choice_{{opt}}"> {{opt}}</li>
+                {% endfor %}
+                </ul>
+            {% elif task.type == "singlelist" %}
+                <ul>
+                {% for opt in task.options.split('||') %}
+                    <li><input type="radio" value={{opt}} name="choice"> {{opt}}</li>
+                {% endfor %}
+                </ul>
+            {% elif task.type == "dropdown" %}
+                <select name="choice">
+                    <option value="no_code" selected></option>
+                {% for opt in task.options.split('||') %}
+                    <option value="{{opt}}">{{opt}}</option>
+                {% endfor %}
+                </select>
+            {% endif %}
+
+            {% if task.allow_comments %}
+                <h3>Additional comments:</h3>
+                <textarea form="codeform" name="comment"></textarea>
+                <br>
+            {% endif %}
+
+            <input type="submit" value="Record code" name="{{task.type}}">
+            <br><br>
+
+            {% if task.allow_navigation %}
+                <input type="submit" value="Next post" name="next">
+                <input type="submit" value="Previous post" name="prev">
+            {% endif %}
+
+        </form>
+    </div>
+
+    <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
+{% endblock %}

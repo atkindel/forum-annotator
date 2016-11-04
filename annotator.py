@@ -181,6 +181,7 @@ def load_db(db):
         print "Loading %d threads to annotator." % threadct
 
         # Load posts for each thread
+        totct = 0
         for mongoid in thread_ids.keys():
             thread_id = thread_ids[mongoid]
             rowct = 0
@@ -214,7 +215,8 @@ def load_db(db):
                     # Load to database
                     query(db, "INSERT INTO posts(%s) VALUES (%s)" % (','.join(post.keys()), ','.join(post.values())))
                     rowct += 1
-                    post_ids[row['mongoid']] = rowct  # Store mongoid-postid mapping
+                    totct += 1
+                    post_ids[row['mongoid']] = totct  # Store mongoid-postid mapping
 
                     # If this is the first post in the thread, update thread metadata
                     if row['mongoid'] == mongoid:
@@ -272,11 +274,14 @@ def titleof_processor():
 @with_db(dbms)
 def tasks(db):
     if request.method == 'POST':
+        # Get task options
         nav = int(request.form.get('allow_navigation') == 'on')
         cmnts = int(request.form.get('allow_comments') == 'on')
-        opts = request.form.get('options').replace('\r\n', '||')
+        opts = request.form.get('options').replace('\r\n', '||').translate(None, "()").split(" ")
+
+        # Record task data
         query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, allow_comments, allow_navigation) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s')" %
-              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, cmnts, nav))
+              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, cmnts, nav, restr))
         return redirect(url_for('tasks'))
     tasks = query(db, "SELECT * FROM tasks", fetchall=True)
     return render_template("tasks.html", tasks=tasks)
@@ -323,120 +328,157 @@ def annotate(db):
     assignments = query(db, "SELECT a.assn_id, a.thread_id, t.label FROM assignments a JOIN tasks t ON a.task_id = t.task_id WHERE user_id = %d" % userid, fetchall=True)
     if request.method == 'POST':
         assn_id = request.form['assn']
-        return redirect(url_for('annotate_thread', assignmentid=assn_id))
+        return redirect(url_for('annotate_thread', assn_id=assn_id))
     return render_template('annotate.html', assigned=assignments)
 
-# TODO: This method is pretty messy
 @with_db(dbms)
-def get_thread(db, threadid):
+def get_thread(db, thread_id):
     '''Given a top-level post mongoid, return the corresponding thread.'''
-    raw_thread = query(db, "SELECT * FROM threads WHERE mongoid = '%s' UNION ALL SELECT * FROM threads WHERE comment_thread_id = '%s'" % (threadid, threadid), fetchall=True)
+
     # Split thread into top-level post+main replies and comments
+    raw_thread = query(db, "SELECT * FROM posts WHERE thread_id = %s" % thread_id, fetchall=True)
     mainreplies = filter(lambda x: x['level'] <= 2, raw_thread)
     comments = filter(lambda x: x['level'] >= 3, raw_thread)
+
+    # Sort thread into discussion streams
     thread = []
     for mr in mainreplies:
         # Append main reply
         thread.append(mr)
-        pid = mr['mongoid']
+        pid = mr['post_id']
+
         # Immediately append any subreplies to this main reply
-        subreplies = filter(lambda x: x['parent_ids'] == pid, comments)
-        for subreply in subreplies:
-            thread.append(subreply)
+        subreplies = filter(lambda x: x['parent_post_id'] == pid, comments)
+        for sr in subreplies:
+            thread.append(sr)
+
     return thread
 
-# TODO: This method is also not great
 @with_db(dbms)
-def fetch_posts(db, threadid, next_post_id):
+def fetch_posts(db, thread_id, next_post_id):
     '''Fetch all posts completed up to mongoid of next post.'''
-    thread = get_thread(threadid)
-    history = []
-    next_post = query(db, "SELECT * FROM threads WHERE mongoid = '%s'" % next_post_id, fetchall=True)[0]
-    level = next_post['level']
+    # Get thread and next post
+    thread = get_thread(thread_id)
+    next_post = query(db, "SELECT * FROM posts WHERE post_id = %s" % next_post_id, fetchall=True)[0]
+
+    # Which main reply parent are we in?
     next_parent_id = None
-    if level >= 3:
-        next_parent_id = next_post['parent_ids']
+    if next_post['level'] >= 3:
+        next_parent_id = next_post['parent_post_id']
+
+    # Retain only posts in context
+    history = []
     for post in thread:
-        if post['mongoid'] == next_post_id:
-            return history, next_post
+        if post['post_id'] == next_post_id:
+            return history, next_post  # Return when we've reached our next post
         else:
-            post_parent_id = None
             post_level = post['level']
-            if post['level'] >= 3:
-                post_parent_id = post['parent_ids']
-            if ((post_level == 1) or (post_level == 2 and post['mongoid'] == next_parent_id) or (post_level >= 3 and post_parent_id == next_parent_id)) and post['mongoid'] != next_post_id:
+
+            # Determine main reply parent of current post
+            post_parent_id = None
+            if post_level >= 3:
+                post_parent_id = post['parent_post_id']
+
+            # Add current post to history if in immediate context
+            if (post_level == 1) or (post_level == 2 and post['post_id'] == next_parent_id) or (post_level >= 3 and post_parent_id == next_parent_id):
                 history.append(post)
 
-# TODO: Rewrite this one too
 @with_db(dbms)
-def goto_post(db, assignmentid, threadid, rel_idx):
+def goto_post(db, assn_id, thread_id, rel_idx):
     '''Given a relative index, move persistent pointer to post on deck accordingly.'''
-    post_idx = done_posts(assignmentid) + rel_idx
+    post_idx = done_posts(assn_id) + rel_idx
+
+    # Bound navigation
     if post_idx < 0:
         return "Earliest post."
-    elif post_idx >= total_posts(threadid):
-        set_finished(assignmentid)
+    elif post_idx >= total_posts(thread_id):
+        set_finished(assn_id)
         return "Last post. This thread is finished!"
-    thread = get_thread(threadid)
-    post_id = thread[post_idx]['mongoid']
-    query(db, "UPDATE assignments SET done = done + %d, next_post = '%s' WHERE assn_id = '%s'" % (rel_idx, post_id, assignmentid))
+
+    # Determine next post ID
+    thread = get_thread(thread_id)
+    post_id = thread[post_idx]['post_id']
+
+    # Update assignment pointer
+    query(db, "UPDATE assignments SET done = done + %d, next_post_id = %s WHERE assn_id = %s" % (rel_idx, post_id, assn_id))
     return None
+
+def handle_replymap(form, method, code):
+    '''Special processing for reply mapping view'''
+    if method == "replymap":
+        comment_ids = [request.form[k] for k in request.form.keys() if 'target' in k]
+        return '||'.join(comment_ids)
+    else:
+        return None
 
 # TODO: Decompose POST methods for each coding task
 # TODO: This method is a nightmare, holy cow!
-@application.route('/annotate/<assignmentid>', methods=['GET', 'POST'])
+@application.route('/annotate/<assn_id>', methods=['GET', 'POST'])
 @login_required
 @with_db(dbms)
-def annotate_thread(db, assignmentid):
-    userid = g.user['id']
-    id_vals = query(db, "SELECT code_type, thread_id FROM assignments WHERE assn_id = %d" % int(assignmentid)).next()
-    code_type = id_vals['code_type']
-    threadid = id_vals['thread_id']
-    comments = None
-    msg = None
+def annotate_thread(db, assn_id):
+    user_id = g.user['id']
+
+    # Fetch assignment and task details
+    assignment = query(db, "SELECT * FROM assignments WHERE assn_id = %s" % assn_id, fetchall=True)[0]
+    next_post_id = assignment['next_post_id']
+    thread_id = assignment['thread_id']
+    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % assignment['task_id'], fetchall=True)[0]
+
+    # Handle code submissions and updates
     if request.method == 'POST':
+        msg = None
         if 'next' in request.form.keys():
-            msg = goto_post(assignmentid, threadid, 1)
+            msg = goto_post(assn_id, thread_id, 1)
         elif 'prev' in request.form.keys():
-            msg = goto_post(assignmentid, threadid, -1)
-        elif 'code' in request.form.keys():
-            code_value = request.form['codevalue']
-            if code_value == "blank":
+            msg = goto_post(assn_id, thread_id, -1)
+        else:
+            # Get submitted codes and associated data fields
+            code_values = [request.form[c] for c in request.form.keys() if 'choice' in c]
+            if "no_code" in code_values or not code_values:
                 msg = "Submit a code for this post."
             else:
-                comment = request.form['comment'].replace("`", "").replace("'", "`")  # This replace 'safely' handles contractions
-                postid = request.form['postid']
-                comment_ids = None
-                if code_value == 'commenters':
-                    comment_ids = [request.form[k] for k in request.form.keys() if 'target' in k]
-                    targets = '||'.join(comment_ids)
-                try:
-                    existing = query(db, "SELECT code_id FROM codes WHERE post_id = '%s' AND user_id = %d" % (postid, userid)).next()['code_id']
-                except StopIteration:
-                    if code_value == 'commenters':
-                        if not comment_ids:
-                            msg = "Which commenters was this post responding to?"
-                        else:
-                            query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, targets, comment))
-                    else:
-                        query(db, "INSERT INTO codes(user_id, post_id, code_type, code_value, comment) VALUES ('%s', '%s', '%s', '%s', '%s')" % (userid, postid, code_type, code_value, comment))
+                code = "||".join(code_values)
+                comment_text = ""
+                if task['allow_comments']:
+                    comment_text = request.form['comment'].replace("`", "").replace("'", "`")  # This replace 'safely' handles contractions
+                post_id = request.form['post_id']
+                targets = handle_replymap(request.form, task['display'], code_values)
+
+                if not targets and "commenters" in code_values:
+                    msg = "Which commenters was this post responding to?"
                 else:
-                    if code_value == 'commenters':
-                        if not comment_ids:
-                            msg = "Which commenters was this post responding to?"
-                        else:
-                            query(db, "UPDATE codes SET code_value = '%s', comment = '%s', targets = '%s' WHERE code_id = %d" % (code_value, comment, targets, existing))
-                    else:
-                        query(db, "UPDATE codes SET code_value = '%s', comment = '%s' WHERE code_id = %d" % (code_value, comment, existing))
-                finally:
-                    if not msg:
-                        msg = goto_post(assignmentid, threadid, 1)
+                    # If code already exists, move to revisions table and drop from canon
+                    try:
+                        existing = query(db, "SELECT * FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (post_id, user_id, assn_id)).next()['code_id']
+                        if existing:
+                            query(db, "INSERT INTO revised SELECT * FROM codes WHERE code_id = %s" % existing)
+                            query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
+                    except StopIteration:
+                        pass
+
+                    # Append code to table
+                    query(db, "INSERT INTO codes(user_id, post_id, assn_id, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (user_id, post_id, assn_id, code, targets, comment_text))
+
+            if not msg:
+                msg = goto_post(assn_id, thread_id, 1)
         if msg:
             flash(msg)
-    next_post_id = query(db, "SELECT next_post FROM assignments WHERE thread_id = '%s' and user_id = %d AND code_type = '%s'" % (threadid, userid, code_type)).next().values()[0]
-    comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = '%s' AND user_id = %d AND code_type = '%s'" % (next_post_id, userid, code_type), fetchall=True)
-    posts, next_post = fetch_posts(threadid, next_post_id)
-    return render_template('posts.html', assignmentid=assignmentid, threadid=threadid, posts=posts, next=next_post, comments=comments, codetype=code_type)
+
+    # Pull thread data to display and code
+    comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (next_post_id, user_id, assn_id), fetchall=True)
+    posts, next_post = fetch_posts(thread_id, next_post_id)
+
+    return render_template('code.html', task=task, assn_id=assn_id, thread_id=thread_id, prev=posts, next=next_post, comments=comments)
+
+
+# Tiebreaking view
+
+@application.route('/tiebreaker')
+@superuser_required
+@with_db(dbms)
+def tiebreak(db):
+    pass
 
 
 # Main page
