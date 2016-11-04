@@ -10,7 +10,7 @@
         <div class="user">
             {{post.author_username}}
             {% if next.level == 4 and task.display == "replymap" %}
-                <input type="checkbox" form="codeform" name="target_{{post.mongoid}}" value="{{post.mongoid}}">
+                <input type="checkbox" form="codeform" name="target_{{post.post_id}}" value="{{post.post_id}}">
             {% endif %}
         </div>
         {% if post.level == 2 %}

@@ -385,13 +385,13 @@ def goto_post(db, assn_id, coded_post_id, rel_idx):
     query(db, "UPDATE assignments SET done = done + %d, next_post_id = %s WHERE assn_id = %s" % (rel_idx, new_next_post_id, assn_id))
     return None
 
-def handle_replymap(form, method, code):
+def handle_replymap(form, method, codes):
     '''Special processing for reply mapping view'''
-    if method == "replymap":
+    if method == "replymap" and "commenters" in codes:
         comment_ids = [request.form[k] for k in request.form.keys() if 'target' in k]
         return '||'.join(comment_ids)
     else:
-        return None
+        return ""
 
 @application.route('/annotate/<assn_id>', methods=['GET', 'POST'])
 @login_required
