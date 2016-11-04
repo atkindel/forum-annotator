@@ -308,6 +308,91 @@ def preview_task(db, task_id):
     task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
     return render_template("posts/preview.html", task=task, thread=sample_thread, prev=prev_posts, next=next_post)
 
+@application.route('/tasks/diagnostics/<task_id>')
+@superuser_required
+@with_db(dbms)
+def diagnostics(db, task_id):
+    query(db, "SET sql_mode = ''")
+
+    # Get task parameters
+    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
+
+    # Threads annotated by this task
+    threads_q = """SELECT DISTINCT t.title, t.thread_id
+                   FROM codes c
+                   JOIN assignments a ON c.assn_id = a.assn_id
+                   JOIN threads t ON a.thread_id = t.thread_id
+                   WHERE a.task_id = %s""" % task_id
+    threads = query(db, threads_q, fetchall=True)
+
+    # Users assigned to this task
+    users_q = """SELECT DISTINCT u.id, u.username, u.first_name, u.last_name
+                 FROM codes c
+                 JOIN assignments a on c.assn_id = a.assn_id
+                 JOIN users u ON c.user_id = u.id
+                 WHERE a.task_id = %s""" % task_id
+    users = query(db, users_q, fetchall=True)
+
+    # Completion statistics for this task
+    completion_q = """SELECT u.username, t.thread_id, count(*) as done, t.comment_count AS total, count(*) / t.comment_count AS proportion
+                      FROM codes c
+                        JOIN users u ON c.user_id = u.id
+                        JOIN assignments a ON c.assn_id = a.assn_id
+                        JOIN threads t ON a.thread_id = t.thread_id
+                      WHERE a.task_id = %s
+                      GROUP BY a.assn_id, t.thread_id""" % task_id
+    completion = query(db, completion_q, fetchall=True)
+    cmpl_data = dict()
+    for row in completion:
+        cmpl_data[(row.pop('username'), row.pop('thread_id'))] = row
+
+    # Per thread pairwise agreement statistics for this task
+    codes_q = """SELECT post_id, code_value, targets
+                 FROM codes c
+                 JOIN assignments a ON c.assn_id = a.assn_id
+                 JOIN threads t ON a.thread_id = t.thread_id
+                 WHERE a.user_id = %s
+                 AND a.task_id = %s
+                 AND t.thread_id = %s"""
+
+    # Get ordered list of codes per user-thread
+    code_data = dict()
+    target_data = dict()
+    for thread in threads:
+        for user in users:
+            codes = query(db, codes_q % (user['id'], task_id, thread['thread_id']))
+            user_codes = list()
+            targets = list()
+            for code in codes:
+                user_codes.append(code['code_value'])
+                targets.append(code['targets'])
+            code_data[(user['id'], thread['thread_id'])] = user_codes
+            target_data[(user['id'], thread['thread_id'])] = targets
+
+    # Compute pairwise agreement
+    agreement = dict()
+    for thread in threads:
+        for ui in users:
+            for uj in users:
+                ui_codes = code_data[(ui['id'], thread['thread_id'])]
+                uj_codes = code_data[(uj['id'], thread['thread_id'])]
+                length = min(len(ui_codes), len(uj_codes))
+
+                # Compute concordance per item
+                conc = 0
+                for i, x in enumerate(ui_codes):
+                    if x == uj_codes[i] == "commenters":
+                        # Targets must agree where applicable, otherwise disagree
+                        conc += (target_data[(ui['id'], thread['thread_id'])][i] == target_data[(uj['id'], thread['thread_id'])][i])
+                    else:
+                        conc += (x == uj_codes[i])
+
+                # Round off proportion
+                prop = round(float(conc) / length, 4)
+                agreement[(ui['id'], uj['id'], thread['thread_id'])] = prop
+
+    return render_template("diagnostics.html", task=task, threads=threads, users=users, completion=cmpl_data, agreement=agreement)
+
 @application.route('/tasks/assign/<task_id>', methods=['GET', 'POST'])
 @superuser_required
 @with_db(dbms)
@@ -326,6 +411,12 @@ def assign_task(db, task_id):
             if value == 'on' and not assigned(thread_id, user_id, task_id):
                 query(db, "INSERT INTO assignments(thread_id, user_id, task_id, next_post_id, finished) VALUES ('%s','%s','%s','%s','%s')" % (thread_id, user_id, task_id, next_id, 0))
     return render_template('assignments.html', users=users, threads=threads, task=task)
+
+@application.route('/tasks/tiebreaker/<task_id>', methods=['GET', 'POST'])
+@superuser_required
+@with_db(dbms)
+def tiebreaker(db, task_id):
+    pass
 
 
 # Annotator user views
@@ -348,7 +439,7 @@ def retrieve_thread(db, thread_id, next_post_id):
     parent_post_id = query(db, "SELECT parent_post_id FROM posts WHERE post_id = %s" % next_post_id, fetchall=True)[0]['parent_post_id']
     q = ("select * from posts where thread_id = {0} and level = 1 "  # Top-level post
          "union all select * from posts where post_id = {1} "  # Main reply
-         "union all select * from posts where parent_post_id = {1} and post_id < {2} and level > 2 "  # Previous commenters
+         "union all select * from posts where thread_id = {0} and parent_post_id = {1} and post_id < {2} and level > 2 "  # Previous commenters
          "union all select * from posts where post_id = {2}"  # Next post to code
          ).format(thread_id, parent_post_id, next_post_id)
     thread = query(db, q, fetchall=True)
@@ -460,14 +551,6 @@ def annotate_thread(db, assn_id):
 
     return render_template('code.html', task=task, assn_id=assn_id, thread_id=thread_id, tlp=top_level_post, prev=prev_posts, next=next_post, comments=comments)
 
-
-# Tiebreaking view
-
-@application.route('/tiebreaker')
-@superuser_required
-@with_db(dbms)
-def tiebreak(db):
-    pass
 
 
 # Main page

@@ -1,0 +1,50 @@
+{% extends "annotator.html" %}
+{% block title %}Task diagnostics{% endblock %}
+{% block body %}
+    <h2>Task diagnostics: {{task.label}}</h2>
+
+    <h3>Completion</h3>
+    <table class="threads users" border=1>
+        <tr>
+            <td><center><b>Thread</b></center></td>
+            {% for user in users %}
+                <td><center><em>{{user.first_name}} {{user.last_name}}</em></center></td>
+            {% endfor %}
+        </tr>
+        {% for thread in threads %}
+        <tr>
+            <td>{{thread.thread_id}}: {{ thread.title }}</td>
+            {% for user in users %}
+                <td class="prop"><center>{{completion[(user.username, thread.thread_id)]['proportion']}}</center></td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h3>Agreement</h3>
+    (Agreement is calculated up to last post coded by the coder who has made the least progress.)
+    <ul>
+    {% for thread in threads %}
+    <li>
+        <h4>{{ thread.title }}</h4>
+        <table class="threads users" border=1>
+            <tr>
+                <td><center><b>Users</b></center></td>
+                {% for user1 in users %}
+                    <td><center><em>{{user1.first_name}} {{user1.last_name}}</em></center></td>
+                {% endfor %}
+            </tr>
+            {% for user2 in users %}
+            <tr>
+                <td>{{user2.first_name}} {{ user2.last_name }}</td>
+                {% for user1 in users %}
+                    <td class="prop"><center>{{agreement[(user1.id, user2.id, thread.thread_id)]}}</center></td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    </li>
+    {% endfor %}
+    </ul>
+
+{% endblock %}
