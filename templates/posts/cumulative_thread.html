@@ -1,5 +1,11 @@
 <ul>
-{% for post in prev %}
+    <li class="post" indent="{{tlp.level}}">
+        <div class="user">{{tlp.author_username}}</div>
+        <em>Top-level post</em>
+        <br><br>
+        {{tlp.body.decode(encoding='UTF-8', errors='ignore')}}
+    </li>
+    {% for post in prev %}
     <li class="post" indent="{{post.level}}">
         <div class="user">
             {{post.author_username}}
@@ -7,17 +13,14 @@
                 <input type="checkbox" form="codeform" name="target_{{post.mongoid}}" value="{{post.mongoid}}">
             {% endif %}
         </div>
-        {% if post.level == 1 %}
-            <em>Top-level post</em>
-            <br>
-        {% elif post.level == 2 %}
+        {% if post.level == 2 %}
             <em>Main reply</em>
             <br>
         {% endif %}
         <br>
         {{post.body.decode(encoding='UTF-8', errors='ignore')}}
     </li>
-{% endfor %}
+    {% endfor %}
 </ul>
 
 <div id="annotatethread">
@@ -27,10 +30,7 @@
         <div class="user">
             {{next.author_username}}
         </div>
-        {% if next.level == 1 %}
-            <em>Top-level post</em>
-            <br>
-        {% elif next.level == 2 %}
+        {% if next.level == 2 %}
             <em>Main reply</em>
             <br>
         {% endif %}

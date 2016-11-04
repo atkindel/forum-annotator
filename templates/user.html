@@ -4,9 +4,9 @@
     <h2>Coding progress for: {{username}}</h2>
     <table class="assignments">
         <tr>
-            <td><em>Task</em></td>
-            <td><em>Thread</em></td>
-            <td><em>Progress</em></td>
+            <td><u>Task</u></td>
+            <td><u>Thread</u></td>
+            <td><u>Progress</u></td>
         </tr>
     {% for assn in assignments %}
         <tr>
@@ -16,4 +16,7 @@
         </tr>
     {% endfor %}
     </table>
+    {% if not assignments %}
+        <em>No assignments yet!</em>
+    {% endif %}
 {% endblock %}

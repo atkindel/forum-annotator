@@ -201,7 +201,7 @@ def load_db(db):
                     post['parent_post_id'] = post_ids.get(row['parent_ids'], -1)
 
                     # Clean up post data
-                    post['body'] = post['body'].replace('"', '""')
+                    post['body'] = post['body'].replace('"', '""').decode('utf-8').encode('utf-8')
                     for key in post.keys():
                         if key not in ['created_at', 'updated_at', 'level', 'comment_count', 'author_id', 'finished', 'pinned', 'anonymous']:
                             post[key] = '"%s"' % post[key]
@@ -210,9 +210,8 @@ def load_db(db):
                         if key in ['created_at', 'updated_at']:
                             post[key] = to_epoch(post[key])
 
-                    # print "INSERT INTO posts(%s) VALUES (%s)" % (','.join(post.keys()), ','.join(post.values()))
-
                     # Load to database
+                    query(db, "SET NAMES utf8mb4;")  # Handle 4-byte UTF-8 characters, e.g. emoji
                     query(db, "INSERT INTO posts(%s) VALUES (%s)" % (','.join(post.keys()), ','.join(post.values())))
                     rowct += 1
                     totct += 1
@@ -220,7 +219,7 @@ def load_db(db):
 
                     # If this is the first post in the thread, update thread metadata
                     if row['mongoid'] == mongoid:
-                        query(db, "UPDATE threads SET first_post_id = (SELECT count(*) FROM posts) WHERE mongoid = '%s'" % mongoid)
+                        query(db, "UPDATE threads SET first_post_id = (SELECT count(*)+1 FROM posts) WHERE mongoid = '%s'" % mongoid)
             print "Loaded %d forum posts in thread %s to annotator." % (rowct, thread_id)
 
 @application.route('/tables/<tablename>/<limit>')
@@ -274,18 +273,30 @@ def titleof_processor():
 @with_db(dbms)
 def tasks(db):
     if request.method == 'POST':
-        # Get task options
+        # Get task options and parameters
         nav = int(request.form.get('allow_navigation') == 'on')
         cmnts = int(request.form.get('allow_comments') == 'on')
-        opts = request.form.get('options').replace('\r\n', '||').translate(None, "()").split(" ")
+        opts_data = request.form.get('options').split('\r\n')
+        opts = list()
+        restr = list()
+        for i, opt in enumerate(opts_data):
+            if any(map(lambda x: x in opt, ['<', '>', '='])):
+                opt, rs = opt.rsplit(' ', 1)
+                restr.append(rs)
+            else:
+                restr.append("_")
+            opts.append(opt.strip('"').replace("'", "`"))
+        opts = '||'.join(opts)
+        restr = '||'.join(restr)
 
         # Record task data
-        query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, allow_comments, allow_navigation) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s')" %
-              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, cmnts, nav, restr))
+        query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, restrictions, allow_comments, allow_navigation) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, restr, cmnts, nav))
         return redirect(url_for('tasks'))
     tasks = query(db, "SELECT * FROM tasks", fetchall=True)
     return render_template("tasks.html", tasks=tasks)
 
+# TODO: Make this more useful
 @application.route('/tasks/preview/<task_id>')
 @superuser_required
 @with_db(dbms)
@@ -332,75 +343,46 @@ def annotate(db):
     return render_template('annotate.html', assigned=assignments)
 
 @with_db(dbms)
-def get_thread(db, thread_id):
-    '''Given a top-level post mongoid, return the corresponding thread.'''
+def retrieve_thread(db, thread_id, next_post_id):
+    '''Fetch all posts in context up to next post.'''
+    parent_post_id = query(db, "SELECT parent_post_id FROM posts WHERE post_id = %s" % next_post_id, fetchall=True)[0]['parent_post_id']
+    q = ("select * from posts where thread_id = {0} and level = 1 "  # Top-level post
+         "union all select * from posts where post_id = {1} "  # Main reply
+         "union all select * from posts where parent_post_id = {1} and post_id < {2} and level > 2 "  # Previous commenters
+         "union all select * from posts where post_id = {2}"  # Next post to code
+         ).format(thread_id, parent_post_id, next_post_id)
+    thread = query(db, q, fetchall=True)
 
-    # Split thread into top-level post+main replies and comments
-    raw_thread = query(db, "SELECT * FROM posts WHERE thread_id = %s" % thread_id, fetchall=True)
-    mainreplies = filter(lambda x: x['level'] <= 2, raw_thread)
-    comments = filter(lambda x: x['level'] >= 3, raw_thread)
-
-    # Sort thread into discussion streams
-    thread = []
-    for mr in mainreplies:
-        # Append main reply
-        thread.append(mr)
-        pid = mr['post_id']
-
-        # Immediately append any subreplies to this main reply
-        subreplies = filter(lambda x: x['parent_post_id'] == pid, comments)
-        for sr in subreplies:
-            thread.append(sr)
-
-    return thread
+    # Return top-level post, previous replies in context, next post to code
+    return thread[0], thread[1:-1], thread[-1]
 
 @with_db(dbms)
-def fetch_posts(db, thread_id, next_post_id):
-    '''Fetch all posts completed up to mongoid of next post.'''
-    # Get thread and next post
-    thread = get_thread(thread_id)
-    next_post = query(db, "SELECT * FROM posts WHERE post_id = %s" % next_post_id, fetchall=True)[0]
-
-    # Which main reply parent are we in?
-    next_parent_id = None
-    if next_post['level'] >= 3:
-        next_parent_id = next_post['parent_post_id']
-
-    # Retain only posts in context
-    history = []
-    for post in thread:
-        if post['post_id'] == next_post_id:
-            return history, next_post  # Return when we've reached our next post
-        else:
-            post_level = post['level']
-
-            # Determine main reply parent of current post
-            post_parent_id = None
-            if post_level >= 3:
-                post_parent_id = post['parent_post_id']
-
-            # Add current post to history if in immediate context
-            if (post_level == 1) or (post_level == 2 and post['post_id'] == next_parent_id) or (post_level >= 3 and post_parent_id == next_parent_id):
-                history.append(post)
-
-@with_db(dbms)
-def goto_post(db, assn_id, thread_id, rel_idx):
-    '''Given a relative index, move persistent pointer to post on deck accordingly.'''
-    post_idx = done_posts(assn_id) + rel_idx
-
+def goto_post(db, assn_id, coded_post_id, rel_idx):
+    '''Move persistent pointer to next pointer by value of rel_idx'''
     # Bound navigation
-    if post_idx < 0:
-        return "Earliest post."
-    elif post_idx >= total_posts(thread_id):
-        set_finished(assn_id)
+    bounds = query(db, "SELECT a.done, t.comment_count FROM assignments a JOIN threads t ON a.thread_id = t.thread_id WHERE assn_id = %s" % assn_id, fetchall=True)[0]
+    if bounds['done'] == bounds['comment_count']:
+        query(db, "CALL set_finished(%s)" % assn_id)
         return "Last post. This thread is finished!"
+    elif bounds['done'] + rel_idx < 0:
+        return "First post."
 
-    # Determine next post ID
-    thread = get_thread(thread_id)
-    post_id = thread[post_idx]['post_id']
+    # Identify ID of next post
+    vals = query(db, "SELECT level, parent_post_id FROM posts WHERE post_id = %s" % coded_post_id, fetchall=True)[0]
+    level, ppi = vals['level'], vals['parent_post_id']
+    try:
+        if level == 2:
+            new_next_post_id = query(db, "SELECT post_id FROM posts WHERE parent_post_id = %s AND level = 3" % coded_post_id, fetchall=True)[0]['post_id']  # Step down into subthread, if exists
+    except:
+        new_next_post_id = query(db, "SELECT post_id FROM posts WHERE post_id > %s AND level = 2" % coded_post_id, fetchall=True)[0]['post_id']  # Get next main reply if no subthread
+    try:
+        if level >= 3:
+            new_next_post_id = query(db, "SELECT post_id FROM posts WHERE parent_post_id = %s AND post_id > %s AND level > 3 LIMIT 1" % (ppi, coded_post_id), fetchall=True)[0]['post_id']  # Get next L4 reply
+    except:
+        new_next_post_id = query(db, "SELECT post_id FROM posts WHERE post_id > %s AND level = 2 LIMIT 1" % ppi, fetchall=True)[0]['post_id']  # Go to next main reply if we hit bottom of subthread
 
     # Update assignment pointer
-    query(db, "UPDATE assignments SET done = done + %d, next_post_id = %s WHERE assn_id = %s" % (rel_idx, post_id, assn_id))
+    query(db, "UPDATE assignments SET done = done + %d, next_post_id = %s WHERE assn_id = %s" % (rel_idx, new_next_post_id, assn_id))
     return None
 
 def handle_replymap(form, method, code):
@@ -411,65 +393,72 @@ def handle_replymap(form, method, code):
     else:
         return None
 
-# TODO: Decompose POST methods for each coding task
-# TODO: This method is a nightmare, holy cow!
 @application.route('/annotate/<assn_id>', methods=['GET', 'POST'])
 @login_required
 @with_db(dbms)
 def annotate_thread(db, assn_id):
     user_id = g.user['id']
 
-    # Fetch assignment and task details
+    # Retrieve task parameters
+    task = query(db, "SELECT * FROM tasks WHERE task_id = (SELECT task_id FROM assignments WHERE assn_id = %s)" % assn_id, fetchall=True)[0]
+
+    # Handle code submissions, code updates, navigation
+    msg = None
+    while request.method == 'POST':
+        # Just coded post_id
+        coded_post_id = query(db, "SELECT * FROM assignments WHERE assn_id = %s" % assn_id, fetchall=True)[0]['next_post_id']
+
+        # Handle navigation events, mostly for debugging
+        if 'next' in request.form.keys():
+            msg = goto_post(assn_id, coded_post_id, 1)
+            break
+
+        # Parse submitted code values
+        code_values = [request.form[c] for c in request.form.keys() if 'choice' in c]
+        if "no_code" in code_values or not code_values:
+            msg = "Submit a code for this post."
+            break  # Reject if no code submitted
+        code = "||".join(code_values)
+
+        # Parse user comments
+        comment_text = ""
+        if task['allow_comments']:
+            comment_text = request.form['comment'].replace("`", "").replace("'", "`")  # This replace 'safely' handles contractions
+
+        # Parse targets for replymap task
+        targets = handle_replymap(request.form, task['display'], code_values)
+        if not targets and "commenters" in code_values:
+            msg = "Which commenters was this post responding to?"
+            break  # Reject if no targets identified
+
+        # If code already exists, move to revisions table and drop from canon
+        try:
+            existing = query(db, "SELECT * FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (coded_post_id, user_id, assn_id)).next()['code_id']
+            if existing:
+                query(db, "INSERT INTO revised SELECT * FROM codes WHERE code_id = %s" % existing)
+                query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
+        except StopIteration:
+            pass  # Move on if no existing code
+
+        # Append code to table
+        query(db, "INSERT INTO codes(user_id, post_id, assn_id, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (user_id, coded_post_id, assn_id, code, targets, comment_text))
+        msg = goto_post(assn_id, coded_post_id, 1)  # Advance next post pointer
+        break
+
+    # Display alerts to user if something bad happened
+    if msg:
+        flash(msg)
+
+    # Fetch most up-to-date assignment data
     assignment = query(db, "SELECT * FROM assignments WHERE assn_id = %s" % assn_id, fetchall=True)[0]
     next_post_id = assignment['next_post_id']
     thread_id = assignment['thread_id']
-    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % assignment['task_id'], fetchall=True)[0]
-
-    # Handle code submissions and updates
-    if request.method == 'POST':
-        msg = None
-        if 'next' in request.form.keys():
-            msg = goto_post(assn_id, thread_id, 1)
-        elif 'prev' in request.form.keys():
-            msg = goto_post(assn_id, thread_id, -1)
-        else:
-            # Get submitted codes and associated data fields
-            code_values = [request.form[c] for c in request.form.keys() if 'choice' in c]
-            if "no_code" in code_values or not code_values:
-                msg = "Submit a code for this post."
-            else:
-                code = "||".join(code_values)
-                comment_text = ""
-                if task['allow_comments']:
-                    comment_text = request.form['comment'].replace("`", "").replace("'", "`")  # This replace 'safely' handles contractions
-                post_id = request.form['post_id']
-                targets = handle_replymap(request.form, task['display'], code_values)
-
-                if not targets and "commenters" in code_values:
-                    msg = "Which commenters was this post responding to?"
-                else:
-                    # If code already exists, move to revisions table and drop from canon
-                    try:
-                        existing = query(db, "SELECT * FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (post_id, user_id, assn_id)).next()['code_id']
-                        if existing:
-                            query(db, "INSERT INTO revised SELECT * FROM codes WHERE code_id = %s" % existing)
-                            query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
-                    except StopIteration:
-                        pass
-
-                    # Append code to table
-                    query(db, "INSERT INTO codes(user_id, post_id, assn_id, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (user_id, post_id, assn_id, code, targets, comment_text))
-
-            if not msg:
-                msg = goto_post(assn_id, thread_id, 1)
-        if msg:
-            flash(msg)
 
     # Pull thread data to display and code
     comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (next_post_id, user_id, assn_id), fetchall=True)
-    posts, next_post = fetch_posts(thread_id, next_post_id)
+    top_level_post, prev_posts, next_post = retrieve_thread(thread_id, next_post_id)
 
-    return render_template('code.html', task=task, assn_id=assn_id, thread_id=thread_id, prev=posts, next=next_post, comments=comments)
+    return render_template('code.html', task=task, assn_id=assn_id, thread_id=thread_id, tlp=top_level_post, prev=prev_posts, next=next_post, comments=comments)
 
 
 # Tiebreaking view

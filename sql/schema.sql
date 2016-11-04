@@ -36,12 +36,12 @@ CREATE TABLE IF NOT EXISTS `posts` (
     mongoid TEXT NOT NULL,
     author_id INTEGER NOT NULL,
     author_username TEXT NOT NULL,
-    body TEXT NOT NULL,
+    body TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
     level INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     parent_post_id INTEGER
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 
 -- Annotation tables --
 
@@ -54,6 +54,7 @@ CREATE TABLE `tasks` (
     prompt TEXT NOT NULL,
     type TEXT NOT NULL,
     options TEXT NOT NULL,
+    restrictions TEXT NOT NULL,
     allow_comments BOOLEAN NOT NULL,
     allow_navigation BOOLEAN NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -65,7 +66,7 @@ CREATE TABLE `assignments` (
     user_id INTEGER NOT NULL,
     thread_id INTEGER NOT NULL,
     next_post_id INTEGER DEFAULT NULL,
-    done INTEGER DEFAULT 0,
+    done INTEGER DEFAULT 1,
     finished BOOLEAN NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
