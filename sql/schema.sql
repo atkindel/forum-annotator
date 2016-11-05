@@ -81,5 +81,5 @@ CREATE TABLE `codes` (
     active INTEGER DEFAULT 1
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
-DROP TABLE IF EXISTS `revised`;
-CREATE TABLE `revised` LIKE `codes`;
+DROP TABLE IF EXISTS `tiebreakers`;
+CREATE TABLE `tiebreakers` LIKE `codes`;

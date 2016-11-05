@@ -1,6 +1,6 @@
 <ul>
     <li class="post" indent="{{tlp.level}}">
-        <div class="user">{{tlp.author_username}}</div>
+        <div class="user">{% if adj %}{{tlp.post_id}} : {% endif %}{{tlp.author_username}}</div>
         <em>Top-level post</em>
         <br><br>
         {{tlp.body.decode(encoding='UTF-8', errors='ignore')}}
@@ -8,7 +8,7 @@
     {% for post in prev %}
     <li class="post" indent="{{post.level}}">
         <div class="user">
-            {{post.author_username}}
+            {% if adj %}{{post.post_id}} : {% endif %}{{post.author_username}}
             {% if next.level == 4 and task.display == "replymap" %}
                 <input type="checkbox" form="codeform" name="target_{{post.post_id}}" value="{{post.post_id}}">
             {% endif %}
@@ -28,7 +28,7 @@
         <u>Now coding:</u>
         <br>
         <div class="user">
-            {{next.author_username}}
+            {% if adj %}{{next.post_id}}: {% endif %}{{next.author_username}}
         </div>
         {% if next.level == 2 %}
             <em>Main reply</em>

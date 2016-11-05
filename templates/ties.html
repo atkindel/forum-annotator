@@ -1,15 +1,14 @@
 {% extends "annotator.html" %}
-{% block title %}Annotate{% endblock %}
+{% block title %}Tiebreaker{% endblock %}
 {% block body %}
-    <h2>Annotate threads</h2>
-    <form action="{{ url_for('annotate') }}" method="POST">
-        <h3>Which thread to tiebreak?</h3>
-        <select class="assigned" name="assn">
-        {% for assn in assigned %}
-            <option value="{{assn.assn_id}}">[{{assn.code_type}}]: {{assn.title}}</option>
+    <h2>Resolve disagreements: {{task.label}}</h2>
+    <form action="{{ url_for('tiebreaker', task_id=task.task_id) }}" method="POST">
+        <select class="disagreements" name="disag">
+        {% for disag in disagreements %}
+            <option value="{{disag}}">U{{disag.u1_id}} vs U{{disag.u2_id}} on post #{{disag.post_id}}</option>
         {% endfor %}
         </select>
-        <input type="submit" value="Select thread">
+        <input type="submit" value="Resolve disagreement">
     </form>
     {% block posts %}{% endblock %}
 {% endblock %}

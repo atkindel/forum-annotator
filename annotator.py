@@ -7,6 +7,8 @@
 
 from csv import DictReader
 from functools import wraps
+from collections import defaultdict
+from itertools import combinations
 import subprocess
 import time
 import os
@@ -296,7 +298,8 @@ def tasks(db):
     return render_template("tasks.html", tasks=tasks)
 
 # TODO: Make this more useful
-@application.route('/tasks/preview/<task_id>')
+@application.route('/tasks/<task_id>')
+@application.route('/tasks/<task_id>/preview')
 @superuser_required
 @with_db(dbms)
 def preview_task(db, task_id):
@@ -307,15 +310,9 @@ def preview_task(db, task_id):
     task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
     return render_template("posts/preview.html", task=task, thread=sample_thread, prev=prev_posts, next=next_post)
 
-@application.route('/tasks/diagnostics/<task_id>')
-@superuser_required
 @with_db(dbms)
-def diagnostics(db, task_id):
-    query(db, "SET sql_mode = ''")
-
-    # Get task parameters
-    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
-
+def retrieve_members(db, task_id):
+    '''Retrieve users and threads associated with a task'''
     # Threads annotated by this task
     threads_q = """SELECT DISTINCT t.title, t.thread_id
                    FROM codes c
@@ -332,7 +329,54 @@ def diagnostics(db, task_id):
                  WHERE a.task_id = %s""" % task_id
     users = query(db, users_q, fetchall=True)
 
-    # Completion statistics for this task
+    return users, threads
+
+@with_db(dbms)
+def retrieve_codes(db, users, threads, task_id):
+    '''Retrieve and reshape code data'''
+    # Query to fetch codes from database
+    codes_q = """SELECT post_id, code_value, targets
+                 FROM codes c
+                 JOIN assignments a ON c.assn_id = a.assn_id
+                 JOIN threads t ON a.thread_id = t.thread_id
+                 WHERE a.user_id = %s
+                 AND a.task_id = %s
+                 AND t.thread_id = %s"""
+
+    # Get ordered list of codes per user-thread
+    code_data = dict()
+    target_data = dict()
+    posts_data = dict()
+    for thread in threads:
+        post_ids = None
+        for user in users:
+            codes = query(db, codes_q % (user['id'], task_id, thread['thread_id']))
+            user_codes = list()
+            targets = list()
+            post_ids = list()
+            for code in codes:
+                post_ids.append(code['post_id'])
+                user_codes.append(code['code_value'])
+                targets.append(code['targets'])
+            code_data[(user['id'], thread['thread_id'])] = user_codes
+            target_data[(user['id'], thread['thread_id'])] = targets
+            posts_data[thread['thread_id']] = post_ids
+
+    return code_data, target_data, posts_data
+
+@application.route('/tasks/<task_id>/diagnostics')
+@superuser_required
+@with_db(dbms)
+def diagnostics(db, task_id):
+    query(db, "SET sql_mode = ''")
+
+    # Get task parameters
+    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
+
+    # Get users and threads for this task
+    users, threads = retrieve_members(task_id)
+
+    # Compute completion statistics for this task
     completion_q = """SELECT u.username, t.thread_id, count(*) as done, t.comment_count AS total, count(*) / t.comment_count AS proportion
                       FROM codes c
                         JOIN users u ON c.user_id = u.id
@@ -345,30 +389,8 @@ def diagnostics(db, task_id):
     for row in completion:
         cmpl_data[(row.pop('username'), row.pop('thread_id'))] = row
 
-    # Per thread pairwise agreement statistics for this task
-    codes_q = """SELECT post_id, code_value, targets
-                 FROM codes c
-                 JOIN assignments a ON c.assn_id = a.assn_id
-                 JOIN threads t ON a.thread_id = t.thread_id
-                 WHERE a.user_id = %s
-                 AND a.task_id = %s
-                 AND t.thread_id = %s"""
-
-    # Get ordered list of codes per user-thread
-    code_data = dict()
-    target_data = dict()
-    for thread in threads:
-        for user in users:
-            codes = query(db, codes_q % (user['id'], task_id, thread['thread_id']))
-            user_codes = list()
-            targets = list()
-            for code in codes:
-                user_codes.append(code['code_value'])
-                targets.append(code['targets'])
-            code_data[(user['id'], thread['thread_id'])] = user_codes
-            target_data[(user['id'], thread['thread_id'])] = targets
-
-    # Compute pairwise agreement
+    # Compute pairwise agreement for this task
+    code_data, target_data, _ = retrieve_codes(users, threads, task_id)
     agreement = dict()
     for thread in threads:
         for ui in users:
@@ -400,7 +422,106 @@ def diagnostics(db, task_id):
 
     return render_template("diagnostics.html", task=task, threads=threads, users=users, completion=cmpl_data, agreement=agreement)
 
-@application.route('/tasks/assign/<task_id>', methods=['GET', 'POST'])
+def identify_disagreements(threads, users, code_data, target_data, posts_data):
+    # Identify disagreements
+    disagreements = list()
+    for thread in threads:
+        thread_id = thread['thread_id']
+        for i, j in combinations(range(0, len(users)), r=2):
+            # Next unique pair of users
+            ui = users[i]
+            uj = users[j]
+            ui_id = ui['id']
+            uj_id = uj['id']
+
+            # Get data for users
+            ui_codes = code_data[(ui_id, thread_id)]
+            ui_targs = target_data[(ui_id, thread_id)]
+            uj_codes = code_data[(uj_id, thread_id)]
+            uj_targs = target_data[(uj_id, thread_id)]
+            length = min(len(ui_codes), len(uj_codes))
+
+            # Truncate lists to minimum length
+            ui_codes = ui_codes[:length]
+            ui_targs = ui_targs[:length]
+            uj_codes = uj_codes[:length]
+            uj_targs = uj_targs[:length]
+
+            # Get post_ids with disagreements
+            for i, x in enumerate(ui_codes):
+                if x == uj_codes[i]:
+                    if x == "commenters":
+                        if ui_targs[i] != uj_targs[i]:
+                            disagreements.append({'u1_id': ui_id, 'u2_id': uj_id, 'post_id': posts_data[thread_id][i], 'thread_id': thread_id})
+                else:
+                    disagreements.append({'u1_id': ui_id, 'u2_id': uj_id, 'post_id': posts_data[thread_id][i], 'thread_id': thread_id})
+
+    return disagreements
+
+@application.route('/tasks/<task_id>/diagnostics/tiebreaker', methods=['GET', 'POST'])
+@superuser_required
+@with_db(dbms)
+def tiebreaker(db, task_id):
+    '''Manually resolve disagreements. Tiebreaking codes are marked as such in the 'comment' column.'''
+    # Direct data to adjudication interface upon selection
+    if request.method == "POST":
+        disag = eval(request.form['disag'])  # Not a good idea, generally
+        session['disag'] = disag
+        return redirect(url_for('adjudicate', task_id=task_id))
+
+    # Get task parameters
+    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
+
+    # Get users, threads, codes and targets for this task
+    users, threads = retrieve_members(task_id)
+    code_data, target_data, posts_data = retrieve_codes(users, threads, task_id)
+
+    # Identify disagreements
+    disagreements = identify_disagreements(threads, users, code_data, target_data, posts_data)
+
+    return render_template('ties.html', task=task, disagreements=disagreements)
+
+@application.route('/tasks/<task_id>/diagnostics/tiebreaker/adjudicate', methods=['GET', 'POST'])
+@superuser_required
+@with_db(dbms)
+def adjudicate(db, task_id):
+    # Get disagreement data
+    disag = session['disag']
+    user1_id = disag["u1_id"]
+    user2_id = disag['u2_id']
+    post_id = disag['post_id']
+    thread_id = disag['thread_id']
+
+    # Get task parameters
+    task = query(db, "SELECT * FROM tasks WHERE task_id = %s" % task_id, fetchall=True)[0]
+
+    # Get code data
+    code_q = "SELECT * FROM codes c JOIN assignments a ON c.assn_id = a.assn_id WHERE c.user_id = %s AND a.task_id = %s AND c.post_id = %s"
+    u1_code = query(db, code_q % (user1_id, task_id, post_id), fetchall=True)[0]
+    u2_code = query(db, code_q % (user2_id, task_id, post_id), fetchall=True)[0]
+    codes = {'code1': u1_code, 'code2': u2_code}
+
+    if request.method == "POST":
+        # Record canonical code for this disagreement pair
+        right_code_id = codes.pop([k for k in request.form.keys() if 'code' in k][0])['code_id']
+        wrong_code_id = codes[codes.keys()[0]]['code_id']
+        query(db, "DELETE FROM tiebreakers WHERE code_id = %s" % wrong_code_id)
+        query(db, "INSERT INTO tiebreakers SELECT * FROM codes WHERE code_id = %s" % right_code_id)
+        query(db, "UPDATE tiebreakers SET comment = comment + '%s' WHERE code_id = %s" % ("Tie broken by " + str(g.user['id']), right_code_id))
+        return redirect(url_for('tiebreaker', task_id=task_id))
+
+    # Get user data
+    u_q = "SELECT username, first_name, last_name FROM users WHERE id = %s"
+    u1 = query(db, u_q % user1_id, fetchall=True)[0]
+    u2 = query(db, u_q % user2_id, fetchall=True)[0]
+
+    # Get thread data
+    top_level_post, prev_posts, next_post = retrieve_thread(thread_id, post_id)
+
+    return render_template('adjudicate.html', adj=True, task=task, thread_id=thread_id, tlp=top_level_post, prev=prev_posts, next=next_post, code1=u1_code, code2=u2_code, u1=u1, u2=u2)
+
+
+@application.route('/tasks/<task_id>/assign', methods=['GET', 'POST'])
 @superuser_required
 @with_db(dbms)
 def assign_task(db, task_id):
@@ -418,12 +539,6 @@ def assign_task(db, task_id):
             if value == 'on' and not assigned(thread_id, user_id, task_id):
                 query(db, "INSERT INTO assignments(thread_id, user_id, task_id, next_post_id, finished) VALUES ('%s','%s','%s','%s','%s')" % (thread_id, user_id, task_id, next_id, 0))
     return render_template('assignments.html', users=users, threads=threads, task=task)
-
-@application.route('/tasks/tiebreaker/<task_id>', methods=['GET', 'POST'])
-@superuser_required
-@with_db(dbms)
-def tiebreaker(db, task_id):
-    pass
 
 
 # Annotator user views
@@ -504,7 +619,7 @@ def annotate_thread(db, assn_id):
     msg = None
     while request.method == 'POST':
         # Just coded post_id
-        coded_post_id = query(db, "SELECT * FROM assignments WHERE assn_id = %s" % assn_id, fetchall=True)[0]['next_post_id']
+        coded_post_id = query(db, "SELECT next_post_id FROM assignments WHERE assn_id = %s" % assn_id, fetchall=True)[0]['next_post_id']
 
         # Handle navigation events, mostly for debugging
         if 'next' in request.form.keys():
@@ -530,13 +645,14 @@ def annotate_thread(db, assn_id):
             break  # Reject if no targets identified
 
         # If code already exists, move to revisions table and drop from canon
-        try:
-            existing = query(db, "SELECT * FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (coded_post_id, user_id, assn_id)).next()['code_id']
-            if existing:
-                query(db, "INSERT INTO revised SELECT * FROM codes WHERE code_id = %s" % existing)
-                query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
-        except StopIteration:
-            pass  # Move on if no existing code
+        # NOTE: Deactivated-- not needed when back navigation not enabled
+        # try:
+        #     existing = query(db, "SELECT * FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (coded_post_id, user_id, assn_id)).next()['code_id']
+        #     if existing:
+        #         query(db, "INSERT INTO revised SELECT * FROM codes WHERE code_id = %s" % existing)
+        #         query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
+        # except StopIteration:
+        #     pass  # Move on if no existing code
 
         # Append code to table
         query(db, "INSERT INTO codes(user_id, post_id, assn_id, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (user_id, coded_post_id, assn_id, code, targets, comment_text))
@@ -556,7 +672,7 @@ def annotate_thread(db, assn_id):
     comments = query(db, "SELECT code_value, comment FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (next_post_id, user_id, assn_id), fetchall=True)
     top_level_post, prev_posts, next_post = retrieve_thread(thread_id, next_post_id)
 
-    return render_template('code.html', task=task, assn_id=assn_id, thread_id=thread_id, tlp=top_level_post, prev=prev_posts, next=next_post, comments=comments)
+    return render_template('code.html', adj=False, task=task, assn_id=assn_id, thread_id=thread_id, tlp=top_level_post, prev=prev_posts, next=next_post, comments=comments)
 
 
 
