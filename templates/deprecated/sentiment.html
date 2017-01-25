@@ -1,0 +1,27 @@
+<div class="codebox">
+    <form action="{{ url_for('annotate_thread', assignmentid=assignmentid) }}" id="codeform" method="POST">
+        <h3>Is this post expressing positive or negative sentiment?</h3>
+        <select name=codevalue>
+            <option value="blank" selected="selected"></option>
+            <option value="5">Very positive</option>
+            <option value="4">Somewhat positive</option>
+            <option value="3">Neither positive nor negative</option>
+            <option value="2">Somewhat negative</option>
+            <option value="1">Very negative</option>
+        </select>
+
+        <h3>Additional comments:</h3>
+        <textarea form="codeform" name="comment"></textarea>
+        <input type="hidden" value="{{next.mongoid}}" name="postid">
+        <br>
+
+        <br><br>
+
+        <input type="submit" value="Record code" name="code">
+        <br><br>
+        {% if comments %}
+            <input type="submit" value="Next post" name="next">
+        {% endif %}
+        <input type="submit" value="Previous post" name="prev">
+    </form>
+</div>

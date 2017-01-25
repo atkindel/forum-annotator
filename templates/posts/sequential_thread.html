@@ -1,0 +1,18 @@
+<div id="annotatethread">
+    <div class="post">
+        <u>Now coding:</u>
+        <br>
+        <div class="user">
+            {{next.author_username}}
+        </div>
+        {% if next.level == 1 %}
+            <em>Top-level post</em>
+            <br>
+        {% elif next.level == 2 %}
+            <em>Main reply</em>
+            <br>
+        {% endif %}
+        <br>
+        {{next.body.decode(encoding='UTF-8', errors='ignore')}}
+    </div>
+</div>

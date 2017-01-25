@@ -1,10 +1,20 @@
+# Data
 data/
 old/
+reddit/
+reddit/raw/
+reddit/train/
+*.tar.gz
+
+# System files
 annotator.pyc
 __init__.pyc
 *.DS_Store
-*.css
 setup.cfg
+
+# Local styling
+static/open*
+static/bootstrap*
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/

@@ -1,0 +1,49 @@
+{% extends "annotator.html" %}
+{% block title %}Tiebreaker: {{task.label}}{% endblock %}
+{% block body %}
+    <h2>{{ titleof(thread_id) }}</h2>
+
+    <form id="adjform" action="{{ url_for('adjudicate', task_id=task.task_id) }}" method="POST">
+
+    {% if task.display in ["cumthread", "replymap"] %}
+        {% include "posts/cumulative_thread.html" %}
+    {% elif task.display in ["seqthread"] %}
+        {% include "posts/sequential_thread.html" %}
+    {% endif %}
+
+    <br><br>
+
+    <div class="code1 post">
+        <div class="user">{{u1.username}}'s code:</div>
+        <em>{{code1.code_value}}</em>
+        {% if code1.targets %}
+            Targets:
+            <ul>
+            {% for targ in code1.targets.split('||') %}
+                <li>targ</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+        <br><br>
+        <input type="submit" value="Choose {{u1.username}}'s code" name="code1">
+    </div>
+    <br>
+    <div class="code2 post">
+        <div class="user">{{u2.username}}'s code:</div>
+        <em>{{code2.code_value}}</em>
+        {% if code2.targets %}
+            Targets:
+            <ul>
+            {% for targ in code2.targets.split('||') %}
+                <li>targ</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+        <br><br>
+        <input type="submit" value="Choose {{u2.username}}'s code" name="code2">
+    </div>
+
+    </form>
+
+    <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
+{% endblock %}

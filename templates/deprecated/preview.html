@@ -1,0 +1,45 @@
+{% extends "annotator.html" %}
+{% block title %}Task preview{% endblock %}
+{% block body %}
+    <a href="{{ url_for('tasks') }}"><< Return to task creator</a>
+
+    <div class="task">
+        <form id="codeform">
+            <h3>{{ task.prompt }}</h3>
+
+            <input type="hidden" value="{{next.mongoid}}" name="postid">
+
+            {% if task.type == "multilist" %}
+                <ul>
+                {% for opt in task.options.split('||') %}
+                    <li><input type="checkbox" value={{opt}} name="choice_{{opt}}"> {{opt}}</li>
+                {% endfor %}
+                </ul>
+            {% elif task.type == "singlelist" %}
+                <ul>
+                {% for opt in task.options.split('||') %}
+                    <li><input type="radio" value={{opt}} name="choice"> {{opt}}</li>
+                {% endfor %}
+                </ul>
+            {% elif task.type == "dropdown" %}
+                <select name="choice">
+                {% for opt in task.options.split('||') %}
+                    <option value="{{opt}}">{{opt}}</option>
+                {% endfor %}
+                </select>
+            {% endif %}
+
+            {% if task.allow_comments %}
+                <h3>Additional comments:</h3>
+                <textarea form="codeform" name="comment"></textarea>
+                <br>
+            {% endif %}
+
+            <input type="submit" value="Record code" name="code">
+            <br><br>
+
+        </form>
+    </div>
+
+    <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
+{% endblock %}

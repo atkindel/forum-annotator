@@ -1,0 +1,40 @@
+<ul>
+    <li class="post" indent="{{tlp.level}}">
+        <div class="user">{% if adj %}{{tlp.post_id}} : {% endif %}{{tlp.author_username}}</div>
+        <em>Top-level post</em>
+        <br><br>
+        {{tlp.body.decode(encoding='UTF-8', errors='ignore')}}
+    </li>
+    {% for post in prev %}
+    <li class="post" indent="{{post.level}}">
+        <div class="user">
+            {% if adj %}{{post.post_id}} : {% endif %}{{post.author_username}}
+            {% if next.level >= 3 and task.display == "replymap" %}
+                <input type="checkbox" form="codeform" name="target_{{post.post_id}}" value="{{post.post_id}}">
+            {% endif %}
+        </div>
+        {% if post.level == 2 %}
+            <em>Main reply</em>
+            <br>
+        {% endif %}
+        <br>
+        {{post.body.decode(encoding='UTF-8', errors='ignore')}}
+    </li>
+    {% endfor %}
+</ul>
+
+<div id="annotatethread">
+    <div class="post">
+        <u>Now coding:</u>
+        <br>
+        <div class="user">
+            {% if adj %}{{next.post_id}}: {% endif %}{{next.author_username}}
+        </div>
+        {% if next.level == 2 %}
+            <em>Main reply</em>
+            <br>
+        {% endif %}
+        <br>
+        {{next.body.decode(encoding='UTF-8', errors='ignore')}}
+    </div>
+</div>

@@ -1,10 +1,23 @@
 {% extends "annotator.html" %}
 {% block title %}{{username}}{% endblock %}
 {% block body %}
-    <h2>{{username}}</h2>
-    <ul class="assignments">
-    {% for assn in assignments %}
-        <li>[{{loop.index}}] <a href="{{ url_for('annotate_thread', threadid=assn.thread_id) }}">{{ assn.thread_id }} ({{ done(assn.thread_id, assn.user_id)}})</a></li>
-    {% endfor %}
-    </ul>
+    <h2>Coding progress for: {{username}}</h2>
+    {% if assignments %}
+        <table class="assignments" border=1>
+            <tr>
+                <td><u>Task</u></td>
+                <td><u>Thread</u></td>
+                <td><u>Progress</u></td>
+            </tr>
+        {% for assn in assignments %}
+            <tr>
+                <td>{{assn.label}}</td>
+                <td>{{titleof(assn.thread_id)}}</td>
+                <td>({{ done(assn.thread_id, assn.user_id, assn.task_id)}})</td>
+            </tr>
+        {% endfor %}
+        </table>
+    {% else %}
+        <em>No assignments yet!</em>
+    {% endif %}
 {% endblock %}

@@ -1,0 +1,65 @@
+{% extends "annotator.html" %}
+{% block title %}{{task.label}}{% endblock %}
+{% block body %}
+    <h2>{{ titleof(thread_id) }}</h2>
+
+    <form id="codeform" action="{{ url_for('annotate_thread', assn_id=assn_id) }}" method="POST">
+
+    {% if task.display in ["cumthread", "replymap"] %}
+        {% include "posts/cumulative_thread.html" %}
+    {% elif task.display in ["seqthread"] %}
+        {% include "posts/sequential_thread.html" %}
+    {% endif %}
+
+    <div class="task row">
+        <div class="col-md-4">
+        <h4>{{ task.prompt }}</h4>
+        {% if task.type == "multilist" %}
+            <ul>
+            {% for opt, restr in (task.options.split('||'), task.restrictions.split('||')) %}
+                <li><input type="checkbox" value={{opt}} name="choice_{{opt}}"> {{opt}}</li>
+            {% endfor %}
+            </ul>
+        {% elif task.type == "singlelist" %}
+            <ul>
+            {% for opt in task.options.split('||') %}
+                <li><input type="radio" value={{opt}} name="choice"> {{opt}}</li>
+            {% endfor %}
+            </ul>
+        {% elif task.type == "dropdown" %}
+            <select name="choice">
+                <option value="no_code" selected></option>
+            {% for opt, restr in zip(task.options.split('||'), task.restrictions.split('||')) %}
+                {% if next.level >= restr|int or restr == '_' %}
+                    <option value="{{opt}}">{{opt}}</option>
+                {% endif %}
+            {% endfor %}
+            </select>
+        {% endif %}
+        </div>
+
+        <div class="col-md-4">
+        {% if task.allow_comments %}
+            <h4>Additional comments:</h4>
+            <textarea form="codeform" name="comment"></textarea>
+            <br>
+        {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <br>
+            <input type="submit" value="Record code" name="{{task.type}}">
+        </div>
+
+    </div>
+
+    </form>
+
+    <script>
+        window.onload=toBottom;
+
+        function toBottom() {
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    </script>
+{% endblock %}

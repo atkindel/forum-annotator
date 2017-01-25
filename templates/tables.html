@@ -13,7 +13,7 @@
         <tr>
             {% for datum in row %}
                 {% if datum == 'body' %}
-                    <td title='{{datum}}'>{{row[datum].decode(encoding='UTF-8')}}</td>
+                    <td title='{{datum}}'>{{row[datum].decode(encoding='UTF-8', errors='ignore')}}</td>
                 {% else %}
                     <td title='{{datum}}'>{{row[datum]}}</td>
                 {% endif %}
@@ -21,4 +21,13 @@
         </tr>
         {% endfor %}
     </table>
+
+    <h3>View other tables...</h3>
+    <ul>
+        <li><a href="{{ url_for('tables', tablename='codes')}}">View user codes</a></li>
+        <li><a href="{{ url_for('tables', tablename='threads')}}">View forum threads</a></li>
+        <li><a href="{{ url_for('tables', tablename='assignments')}}">View coding assignments</a></li>
+        <li><a href="{{ url_for('tables', tablename='users')}}">View user accounts</a></li>
+        <li><a href="{{ url_for('tables', tablename='tasks')}}">View coding tasks</a></li>
+    </ul>
 {% endblock %}
