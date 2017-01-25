@@ -2,23 +2,72 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>Annotator | {% block title %}{% endblock %}</title>
-        <link rel="stylesheet" href="{{ url_for('static', filename='annotator.css') }}">
-        <link rel="shortcut icon" href="{{ url_for('static', filename='glyphicons-508-cluster.png') }}"
+        <title>Discourse | {% block title %}{% endblock %}</title>
+
+        <!-- Styling -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='open-iconic.min.css') }}?1">
+        <link rel="stylesheet" href="{{ url_for('static', filename='annotator.css') }}?42">
+        <link rel="shortcut icon" href="{{ url_for('static', filename='glyphicons-508-cluster.png') }}">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato|Comfortaa">
+
+        <!-- Scripts -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="{{ url_for('static', filename='bootstrap.min.js') }}"></script>
+
     </head>
     <body>
+        <h1><a href="{{ url_for('index') }}">Discourse</a></h1>
+
+        <nav class="navbar navbar-default">
+          <div class="container-fluid">
+            <ul class="nav navbar-nav">
+                {% if g.user %}
+                <li role="presentation"><a href="{{ url_for('index') }}"><span class="oi" data-glyph="home"></span> Home </a></li>
+                <li role="presentation"><a href="{{ url_for('annotate') }}"><span class="oi" data-glyph="comment-square"></span> Annotate forum posts</a></li>
+                <li role="presentation"><a href="{{ url_for('userpage', username=g.user['username']) }}"><span class="oi" data-glyph="task"></span> View progress</a></li>
+                {% endif %}
+                {% if g.user['superuser'] %}
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="oi" data-glyph="globe"></span> Administration <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li role="presentation"><a href="{{ url_for('admin') }}"><span class="oi" data-glyph="people"></span> Register users</a></li>
+                        <li role="presentation"><a href="{{ url_for('tasks') }}"><span class="oi" data-glyph="dashboard"></span> Manage coding tasks</a></li>
+                        <li role="presentation"><a href="{{ url_for('tables', tablename='codes') }}"><span class="oi" data-glyph="spreadsheet"></span> View DB tables</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                {% if g.user %}
+                    <li role="presentation"><a href="{{ url_for('logout') }}"><span class="oi" data-glyph="power-standby"></span> Log out</a></li>
+                {% else %}
+                    <li role="presentation"><a href="{{ url_for('login') }}"><span class="oi" data-glyph="power-standby"></span> Log in</a></li>
+                {% endif %}
+            </ul>
+          </div>
+        </nav>
+
+        <div class="mainblock">
+            {% block body %}{% endblock %}
+        </div>
+
+        <br>
+
         <div>
-            <h1><a href="{{ url_for('index') }}">annotator</a></h1>
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
-                <ul class="messages">
+                <div class="alert alert-warning" role="alert">
+                <ul>
                     {% for message in messages %}
                         <li>{{message}}</li>
                     {% endfor %}
                 </ul>
+                </div>
                 {% endif %}
             {% endwith %}
-            {% block body %}{% endblock %}
         </div>
+
+        <br><br><br>
     </body>
 </html>

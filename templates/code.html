@@ -5,19 +5,15 @@
 
     <form id="codeform" action="{{ url_for('annotate_thread', assn_id=assn_id) }}" method="POST">
 
-    {% if g.user['superuser'] %}
-        <input type="submit" value="Next post" name="next">
-    {% endif %}
-
     {% if task.display in ["cumthread", "replymap"] %}
         {% include "posts/cumulative_thread.html" %}
     {% elif task.display in ["seqthread"] %}
         {% include "posts/sequential_thread.html" %}
     {% endif %}
 
-    <div class="task">
-        <h3>{{ task.prompt }}</h3>
-
+    <div class="task row">
+        <div class="col-md-4">
+        <h4>{{ task.prompt }}</h4>
         {% if task.type == "multilist" %}
             <ul>
             {% for opt, restr in (task.options.split('||'), task.restrictions.split('||')) %}
@@ -38,19 +34,30 @@
             {% endfor %}
             </select>
         {% endif %}
+        </div>
 
+        <div class="col-md-4">
         {% if task.allow_comments %}
-            <h3>Additional comments:</h3>
+            <h4>Additional comments:</h4>
             <textarea form="codeform" name="comment"></textarea>
             <br>
         {% endif %}
+        </div>
 
-        <input type="submit" value="Record code" name="{{task.type}}">
-        <br><br>
+        <div class="col-md-4">
+            <br>
+            <input type="submit" value="Record code" name="{{task.type}}">
+        </div>
 
     </div>
 
     </form>
 
-    <script>document.body.scrollTop = document.body.scrollHeight - document.body.clientHeight;</script>
+    <script>
+        window.onload=toBottom;
+
+        function toBottom() {
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    </script>
 {% endblock %}

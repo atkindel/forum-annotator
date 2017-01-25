@@ -1,25 +1,11 @@
 {% extends "annotator.html" %}
 {% block title %}Home{% endblock %}
 {% block body %}
-    <h2>Menu</h2>
-    <ul>
+    <div>
     {% if g.user %}
-        {% if g.user['superuser'] %}
-        <li><h3>Administration</h3></li>
-        <ul>
-            <li><a href="{{ url_for('admin') }}">Register users</a></li>
-            <li><a href="{{ url_for('tasks') }}">Manage coding tasks</a></li>
-            <li><a href="{{ url_for('tables', tablename='codes') }}">View DB tables</a></li>
-        </ul>
-        {% endif %}
-        <li><h3>Annotation</h3></li>
-        <ul>
-            <li><a href="{{ url_for('annotate') }}">Annotate forum posts</a></li>
-            <li><a href="{{ url_for('userpage', username=g.user['username']) }}">View progress</a></li>
-            <li><a href="{{ url_for('logout') }}">Log out</a></li>
-        </ul>
+        Hi, {{ g.user['first_name'] }}! You are logged in as <i>{{ g.user['username'] }}</i>.
     {% else %}
-        <li><a href="{{ url_for('login') }}">Log in</a></li>
+        <i>You aren't logged in.</i>
     {% endif %}
-    </ul>
+    </div>
 {% endblock %}

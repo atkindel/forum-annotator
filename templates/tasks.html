@@ -7,7 +7,6 @@
         <li>
             [{{ task.label }}]: <em>{{ task.title }}</em>
             <br>&emsp;
-            <a href="{{ url_for('preview_task', task_id=task.task_id) }}">Preview task</a> |
             <a href="{{ url_for('assign_task', task_id=task.task_id) }}">Assign task</a> |
             <a href="{{ url_for('diagnostics', task_id=task.task_id) }}">View diagnostics</a>
         </li><br>

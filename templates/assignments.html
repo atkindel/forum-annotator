@@ -1,7 +1,7 @@
 {% extends "annotator.html" %}
 {% block title %}Assign{% endblock %}
 {% block body %}
-    <h2>Assign users to task: {{task.title}}</h2>
+    <h2>Assign users to task: <i>{{task.title}}</i></h2>
     <form action="{{ url_for('assign_task', task_id=task.task_id) }}" method="POST">
         <table class="threads users" border=1>
             <tr>
