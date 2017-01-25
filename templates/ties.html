@@ -1,14 +1,18 @@
 {% extends "annotator.html" %}
 {% block title %}Tiebreaker{% endblock %}
 {% block body %}
-    <h2>Resolve disagreements: {{task.label}}</h2>
-    <form action="{{ url_for('tiebreaker', task_id=task.task_id) }}" method="POST">
-        <select class="disagreements" name="disag">
-        {% for disag in disagreements %}
-            <option value="{{disag}}">U{{disag.u1_id}} vs U{{disag.u2_id}} on post #{{disag.post_id}}</option>
-        {% endfor %}
-        </select>
-        <input type="submit" value="Resolve disagreement">
-    </form>
+    <h2>Resolve disagreements: <i>{{task.label}}</i></h2>
+    {% if disagreements %}
+        <form action="{{ url_for('tiebreaker', task_id=task.task_id) }}" method="POST">
+            <select class="disagreements" name="disag">
+            {% for disag in disagreements %}
+                <option value="{{disag}}">U{{disag.u1_id}} vs U{{disag.u2_id}} on post #{{disag.post_id}}</option>
+            {% endfor %}
+            </select>
+            <input type="submit" value="Resolve disagreement">
+        </form>
+    {% else %}
+        <i>No disagreements on this thread.</i>
+    {% endif %}
     {% block posts %}{% endblock %}
 {% endblock %}

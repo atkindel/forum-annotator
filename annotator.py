@@ -267,6 +267,13 @@ def titleof_processor():
         return title_of_thread(thread_id)
     return dict(titleof=titleof)
 
+@application.context_processor
+def zip_processor():
+    '''zip() for embedded for loops'''
+    def pzip(list1, list2):
+        return zip(list1, list2)
+    return dict(zip=zip)
+
 
 # Task administration
 
@@ -280,9 +287,9 @@ def tasks(db):
         opts_data = request.form.get('options').split('\r\n')
         opts = list()
         restr = list()
-        for i, opt in enumerate(opts_data):
-            if any(map(lambda x: x in opt, ['<', '>', '='])):
-                opt, rs = opt.rsplit(' ', 1)
+        for opt in opts_data:
+            if '|' in opt:
+                opt, rs = opt.rsplit('|', 1)
                 restr.append(rs)
             else:
                 restr.append("_")
@@ -291,8 +298,8 @@ def tasks(db):
         restr = '||'.join(restr)
 
         # Record task data
-        query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, restrictions, allow_comments) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s')" %
-              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, restr, cmnts))
+        query(db, "INSERT INTO tasks(title, label, display, prompt, type, options, restrictions, allow_comments, allow_navigation) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s')" %
+              (request.form['title'], request.form['label'], request.form['display'], request.form['prompt'], request.form['type'], opts, restr, cmnts, 0))
         return redirect(url_for('tasks'))
     tasks = query(db, "SELECT * FROM tasks", fetchall=True)
     return render_template("tasks.html", tasks=tasks)
@@ -422,9 +429,11 @@ def diagnostics(db, task_id):
 
     return render_template("diagnostics.html", task=task, threads=threads, users=users, completion=cmpl_data, agreement=agreement)
 
-def identify_disagreements(threads, users, code_data, target_data, posts_data):
+@with_db(dbms)
+def identify_disagreements(db, threads, users, code_data, target_data, posts_data):
     # Identify disagreements
     disagreements = list()
+
     for thread in threads:
         thread_id = thread['thread_id']
         for i, j in combinations(range(0, len(users)), r=2):
@@ -449,12 +458,26 @@ def identify_disagreements(threads, users, code_data, target_data, posts_data):
 
             # Get post_ids with disagreements
             for i, x in enumerate(ui_codes):
+
                 if x == uj_codes[i]:
                     if x == "commenters":
                         if ui_targs[i] != uj_targs[i]:
                             disagreements.append({'u1_id': ui_id, 'u2_id': uj_id, 'post_id': posts_data[thread_id][i], 'thread_id': thread_id})
                 else:
                     disagreements.append({'u1_id': ui_id, 'u2_id': uj_id, 'post_id': posts_data[thread_id][i], 'thread_id': thread_id})
+
+    # Remove ties already broken
+    notie = []
+    for i, disag in enumerate(disagreements):
+        try:
+            broken = query(db, "SELECT 1 FROM tiebreakers WHERE post_id = %d AND (user_id = %d OR user_id = %d)" % (disag['post_id'], disag['u1_id'], disag['u2_id'])).next()
+        except StopIteration:
+            continue
+        print disag['post_id'], broken
+        if broken:
+            print i
+            notie.append(i)
+    disagreements = [i for j, i in enumerate(disagreements) if j not in notie]
 
     return disagreements
 
@@ -507,7 +530,7 @@ def adjudicate(db, task_id):
         wrong_code_id = codes[codes.keys()[0]]['code_id']
         query(db, "DELETE FROM tiebreakers WHERE code_id = %s" % wrong_code_id)
         query(db, "INSERT INTO tiebreakers SELECT * FROM codes WHERE code_id = %s" % right_code_id)
-        query(db, "UPDATE tiebreakers SET comment = comment + '%s' WHERE code_id = %s" % ("Tie broken by " + str(g.user['id']), right_code_id))
+        query(db, "UPDATE tiebreakers SET comment = '%s' WHERE code_id = %s" % ("Tie broken by " + str(g.user['id']), right_code_id))
         return redirect(url_for('tiebreaker', task_id=task_id))
 
     # Get user data

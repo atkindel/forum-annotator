@@ -9,7 +9,7 @@
     <li class="post" indent="{{post.level}}">
         <div class="user">
             {% if adj %}{{post.post_id}} : {% endif %}{{post.author_username}}
-            {% if next.level == 4 and task.display == "replymap" %}
+            {% if next.level >= 3 and task.display == "replymap" %}
                 <input type="checkbox" form="codeform" name="target_{{post.post_id}}" value="{{post.post_id}}">
             {% endif %}
         </div>

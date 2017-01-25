@@ -29,8 +29,10 @@
         {% elif task.type == "dropdown" %}
             <select name="choice">
                 <option value="no_code" selected></option>
-            {% for opt in task.options.split('||') %}
-                <option value="{{opt}}">{{opt}}</option>
+            {% for opt, restr in zip(task.options.split('||'), task.restrictions.split('||')) %}
+                {% if next.level >= restr|int or restr == '_' %}
+                    <option value="{{opt}}">{{opt}}</option>
+                {% endif %}
             {% endfor %}
             </select>
         {% endif %}
