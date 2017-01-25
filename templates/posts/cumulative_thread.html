@@ -25,6 +25,7 @@
 
 <div id="annotatethread">
     <div class="post">
+        {% if tlp.author_username == next.author_username %}<span class="staffpost">{% endif %}
         <u>Now coding:</u>
         <br>
         <div class="user">
@@ -36,5 +37,6 @@
         {% endif %}
         <br>
         {{next.body.decode(encoding='UTF-8', errors='ignore')}}
+        {% if tlp.author_username == next.author_username %}</span>{% endif %}
     </div>
 </div>
