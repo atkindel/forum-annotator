@@ -155,13 +155,22 @@ def load_db(db):
 
     def to_epoch(timestamp):
         '''Convert post timestamp string to epoch time.'''
-        return str(int(time.mktime(time.strptime(timestamp, '%Y-%m-%d %H:%M:%S'))))
+        if not timestamp:
+            return "0"
+        else:
+            try:
+                return str(int(time.mktime(time.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f %Z'))))
+            except ValueError:
+                try:
+                    return str(int(time.mktime(time.strptime(timestamp, '%Y-%m-%d %H:%M:%S %Z'))))
+                except ValueError:
+                    return str(int(time.mktime(time.strptime(timestamp, '%Y-%m-%d %H:%M:%S'))))
 
     with open(application.config['THREADS']) as t:
         rows = DictReader(t)
 
         # Load threads first
-        threadct = 0
+        threadct = query(db, "SELECT count(*) FROM threads").next().values()[0]
         thread_ids = dict()
         for row in rows:
             if row['X_type'] != "CommentThread":
@@ -170,7 +179,7 @@ def load_db(db):
                 thread = dict()
 
                 # Extract thread data and clean up
-                thread['title'] = '"%s"' % row['title']
+                thread['title'] = '"%s"' % row['title'].replace('"', '""')
                 thread['body'] = '"%s"' % row['body'].replace('"', '""')
                 thread['creator'] = '"%s"' % row['author_username']
                 thread['comment_count'] = row['comment_count']
