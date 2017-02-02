@@ -42,5 +42,34 @@ BEGIN
     UPDATE assignments SET finished = 1 WHERE `assn_id` = this_assn_id;
 END//
 
+-- Set level of posts --
+DROP PROCEDURE IF EXISTS set_levels//
+CREATE PROCEDURE `set_levels`(this_thread_id INT, this_parent_post_id INT)
+DETERMINISTIC
+BEGIN
+    DROP TABLE IF EXISTS posts_3;
+    CREATE TEMPORARY TABLE IF NOT EXISTS posts_3 AS (
+        SELECT post_id
+        FROM posts
+        WHERE thread_id = this_thread_id
+        AND level = 3
+        GROUP BY parent_post_id
+        ORDER BY parent_post_id, post_id
+    );
+
+    DROP TABLE IF EXISTS posts_4;
+    CREATE TEMPORARY TABLE IF NOT EXISTS posts_4 AS (
+        SELECT post_id
+        FROM posts
+        WHERE thread_id = this_thread_id
+        AND level = 3
+        AND post_id NOT IN (SELECT * FROM posts_3)
+    );
+
+    UPDATE posts
+    SET level = 4
+    WHERE post_id IN (SELECT * FROM posts_4);
+END//
+
 
 DELIMITER ;

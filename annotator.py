@@ -24,7 +24,7 @@ application = Flask(__name__)
 
 # Configuration
 DEV_INSTANCE = True
-THREADS = 'data/threads.csv'
+THREADS = 'data/discourse.csv'
 SECRET_KEY = os.environ['SECRET_KEY']
 dbms = {'username': os.environ['DB_USER'],
         'password': os.environ['DB_PASS'],
