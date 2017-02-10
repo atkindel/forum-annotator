@@ -8,7 +8,7 @@
 from csv import DictReader
 from functools import wraps
 from collections import defaultdict
-from itertools import combinations
+from itertools import combinations, product
 import subprocess
 import time
 import os
@@ -167,7 +167,7 @@ def load_db(db):
                     return str(int(time.mktime(time.strptime(timestamp, '%Y-%m-%d %H:%M:%S'))))
 
     with open(application.config['THREADS']) as t:
-        rows = DictReader(t)
+        rows = list(DictReader(t))
 
         # Load threads first
         threadct = query(db, "SELECT count(*) FROM threads").next().values()[0]
@@ -194,43 +194,54 @@ def load_db(db):
         # Load posts for each thread
         totct = 0
         for mongoid in thread_ids.keys():
+            # t.seek(0)  # Reset CSV file head to top
+
             thread_id = thread_ids[mongoid]
             rowct = 0
             post_ids = dict()
-            t.seek(0)  # Reset CSV file head to top
+
+            # Extract relevant posts in order
+            ordered = list()
             for row in rows:
-                if mongoid not in [row['comment_thread_id'], row['mongoid']]:
-                    continue
-                else:
-                    post = dict()
+                if row['mongoid'] == mongoid:
+                    ordered.insert(0, row)  # Top-level post
+                elif row['comment_thread_id'] == mongoid and row['level'] == "2":
+                    ordered.append(row)  # Main reply
+                    for srow in rows:
+                        if srow['parent_ids'] == row['mongoid']:
+                            ordered.append(srow)  # Subthread for this main reply
 
-                    # Extract post data
-                    map(lambda x: assign(post, row, x), ['mongoid', 'author_id', 'author_username', 'body', 'level', 'created_at', 'updated_at'])
+            # Insert posts to table
+            for row in ordered:
+                post = dict()
 
-                    # Map context IDs
-                    post['thread_id'] = thread_id
-                    post['parent_post_id'] = post_ids.get(row['parent_ids'], -1)
+                # Extract post data
+                map(lambda x: assign(post, row, x), ['mongoid', 'author_id', 'author_username', 'body', 'level', 'created_at', 'updated_at'])
 
-                    # Clean up post data
-                    post['body'] = post['body'].replace('"', '""').decode('utf-8').encode('utf-8')
-                    for key in post.keys():
-                        if key not in ['created_at', 'updated_at', 'level', 'comment_count', 'author_id', 'finished', 'pinned', 'anonymous']:
-                            post[key] = '"%s"' % post[key]
-                        if post[key] in ['NA', '0', 'False']:
-                            post[key] = str(0)
-                        if key in ['created_at', 'updated_at']:
-                            post[key] = to_epoch(post[key])
+                # Map context IDs
+                post['thread_id'] = thread_id
+                post['parent_post_id'] = post_ids.get(row['parent_ids'], -1)
 
-                    # Load to database
-                    query(db, "SET NAMES utf8mb4;")  # Handle 4-byte UTF-8 characters, e.g. emoji
-                    query(db, "INSERT INTO posts(%s) VALUES (%s)" % (','.join(post.keys()), ','.join(post.values())))
-                    rowct += 1
-                    totct += 1
-                    post_ids[row['mongoid']] = totct  # Store mongoid-postid mapping
+                # Clean up post data
+                post['body'] = post['body'].replace('"', '""').decode('utf-8').encode('utf-8')
+                for key in post.keys():
+                    if key not in ['created_at', 'updated_at', 'level', 'comment_count', 'author_id', 'finished', 'pinned', 'anonymous']:
+                        post[key] = '"%s"' % post[key]
+                    if post[key] in ['NA', '0', 'False']:
+                        post[key] = str(0)
+                    if key in ['created_at', 'updated_at']:
+                        post[key] = to_epoch(post[key])
 
-                    # If this is the first post in the thread, update thread metadata
-                    if row['mongoid'] == mongoid:
-                        query(db, "UPDATE threads SET first_post_id = (SELECT count(*)+1 FROM posts) WHERE mongoid = '%s'" % mongoid)
+                # Load to database
+                query(db, "SET NAMES utf8mb4;")  # Handle 4-byte UTF-8 characters, e.g. emoji
+                query(db, "INSERT INTO posts(%s) VALUES (%s)" % (','.join(post.keys()), ','.join(post.values())))
+                rowct += 1
+                totct += 1
+                post_ids[row['mongoid']] = totct  # Store mongoid-postid mapping
+
+                # If this is the first post in the thread, update thread metadata
+                if row['mongoid'] == mongoid:
+                    query(db, "UPDATE threads SET first_post_id = (SELECT count(*)+1 FROM posts) WHERE mongoid = '%s'" % mongoid)
             print "Loaded %d forum posts in thread %s to annotator." % (rowct, thread_id)
 
 @application.route('/tables/<tablename>/<limit>')
@@ -281,7 +292,7 @@ def zip_processor():
     '''zip() for embedded for loops'''
     def pzip(list1, list2):
         return zip(list1, list2)
-    return dict(zip=zip)
+    return dict(zip=pzip)
 
 
 # Task administration
@@ -591,10 +602,13 @@ def annotate(db):
 def retrieve_thread(db, thread_id, next_post_id):
     '''Fetch all posts in context up to next post.'''
     parent_post_id = query(db, "SELECT parent_post_id FROM posts WHERE post_id = %s" % next_post_id, fetchall=True)[0]['parent_post_id']
-    q = ("select * from posts where thread_id = {0} and level = 1 "  # Top-level post
-         "union all select * from posts where post_id = {1} "  # Main reply
-         "union all select * from posts where thread_id = {0} and parent_post_id = {1} and post_id < {2} and level > 2 "  # Previous commenters
-         "union all select * from posts where post_id = {2}"  # Next post to code
+    q = ("SELECT * FROM posts WHERE thread_id = {0} AND level = 1 "  # Top-level post
+         "UNION ALL "
+         "SELECT * FROM posts WHERE post_id = {1} "  # Main reply
+         "UNION ALL "
+         "SELECT * FROM posts WHERE thread_id = {0} AND parent_post_id = {1} AND post_id < {2} AND level > 2 "  # Previous commenters
+         "UNION ALL "
+         "SELECT * FROM posts WHERE post_id = {2}"  # Next post to code
          ).format(thread_id, parent_post_id, next_post_id)
     thread = query(db, q, fetchall=True)
 
@@ -604,31 +618,16 @@ def retrieve_thread(db, thread_id, next_post_id):
 @with_db(dbms)
 def goto_post(db, assn_id, coded_post_id, rel_idx):
     '''Move persistent pointer to next pointer by value of rel_idx'''
-    # Bound navigation
     bounds = query(db, "SELECT a.done, t.comment_count FROM assignments a JOIN threads t ON a.thread_id = t.thread_id WHERE assn_id = %s" % assn_id, fetchall=True)[0]
     if bounds['done'] == bounds['comment_count']:
         query(db, "CALL set_finished(%s)" % assn_id)
         return "Last post. This thread is finished!"
     elif bounds['done'] + rel_idx < 0:
         return "First post."
-
-    # Identify ID of next post
-    vals = query(db, "SELECT level, parent_post_id FROM posts WHERE post_id = %s" % coded_post_id, fetchall=True)[0]
-    level, ppi = vals['level'], vals['parent_post_id']
-    try:
-        if level == 2:
-            new_next_post_id = query(db, "SELECT post_id FROM posts WHERE parent_post_id = %s AND level = 3" % coded_post_id, fetchall=True)[0]['post_id']  # Step down into subthread, if exists
-    except:
-        new_next_post_id = query(db, "SELECT post_id FROM posts WHERE post_id > %s AND level = 2" % coded_post_id, fetchall=True)[0]['post_id']  # Get next main reply if no subthread
-    try:
-        if level >= 3:
-            new_next_post_id = query(db, "SELECT post_id FROM posts WHERE parent_post_id = %s AND post_id > %s AND level > 3 LIMIT 1" % (ppi, coded_post_id), fetchall=True)[0]['post_id']  # Get next L4 reply
-    except:
-        new_next_post_id = query(db, "SELECT post_id FROM posts WHERE post_id > %s AND level = 2 LIMIT 1" % ppi, fetchall=True)[0]['post_id']  # Go to next main reply if we hit bottom of subthread
-
-    # Update assignment pointer
-    query(db, "UPDATE assignments SET done = done + %d, next_post_id = %s WHERE assn_id = %s" % (rel_idx, new_next_post_id, assn_id))
-    return None
+    else:
+        new_next_post_id = coded_post_id + rel_idx  # Assume posts table is in coding order
+        query(db, "UPDATE assignments SET done = done + %d, next_post_id = %s WHERE assn_id = %s" % (rel_idx, new_next_post_id, assn_id))
+        return None
 
 def handle_replymap(form, method, codes):
     '''Special processing for reply mapping view'''
@@ -658,6 +657,10 @@ def annotate_thread(db, assn_id):
             msg = goto_post(assn_id, coded_post_id, 1)
             break
 
+        if 'prev' in request.form.keys():
+            msg = goto_post(assn_id, coded_post_id, -1)
+            break
+
         # Parse submitted code values
         code_values = [request.form[c] for c in request.form.keys() if 'choice' in c]
         if "no_code" in code_values or not code_values:
@@ -676,15 +679,13 @@ def annotate_thread(db, assn_id):
             msg = "Which commenters was this post responding to?"
             break  # Reject if no targets identified
 
-        # If code already exists, move to revisions table and drop from canon
-        # NOTE: Deactivated-- not needed when back navigation not enabled
-        # try:
-        #     existing = query(db, "SELECT * FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (coded_post_id, user_id, assn_id)).next()['code_id']
-        #     if existing:
-        #         query(db, "INSERT INTO revised SELECT * FROM codes WHERE code_id = %s" % existing)
-        #         query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
-        # except StopIteration:
-        #     pass  # Move on if no existing code
+        # If code already exists for this post, drop it for new code
+        try:
+            existing = query(db, "SELECT code_id FROM codes WHERE post_id = %s AND user_id = %d AND assn_id = %s" % (coded_post_id, user_id, assn_id)).next()['code_id']
+            if existing:
+                query(db, "DELETE FROM codes WHERE code_id = %s" % existing)
+        except StopIteration:
+            pass  # Move on if no existing code
 
         # Append code to table
         query(db, "INSERT INTO codes(user_id, post_id, assn_id, code_value, targets, comment) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (user_id, coded_post_id, assn_id, code, targets, comment_text))
